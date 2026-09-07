@@ -57,6 +57,33 @@ real ceiling, so raising this value above it only delays the same failure.
 one. Raise the timeout only if searches genuinely need it, and prefer narrowing
 `conditions` and `limit` first.
 
+## Deployment
+
+The server host runs released commits from this repository, never copied files.
+The layout separates code, secrets, and the version currently in use:
+
+```text
+/opt/4grow-mcp-releases/<date>-<sha>   one git clone per release
+/opt/4grow-mcp-shared/.env             secrets, outlive every release
+/opt/4grow-mcp                         symlink to the live release
+```
+
+`systemd` runs `4grow-mcp.service` with `WorkingDirectory=/opt/4grow-mcp`, so
+moving the symlink changes the version and moving it back is a full rollback.
+`ExecStart` calls `node` directly rather than through `npm`, so `SIGTERM` from
+`systemctl` reaches the process and the HTTP server closes gracefully.
+
+Deploy with `scripts/deploy.sh [branch]` on the host. It clones the branch,
+installs production dependencies, boots the release on port 3001 to prove it
+starts, and only then repoints the symlink and restarts the service. The live
+version keeps serving traffic during every step except the restart itself. If
+the release fails its smoke test, the deploy stops and nothing is switched. If
+it fails `/health` after the restart, the symlink returns to the previous
+release automatically.
+
+`.env` is never part of a release. Each release symlinks it from the shared
+directory, so credentials and `DRUPAL_TIMEOUT_MS` survive deploys untouched.
+
 ## Tunnel / ChatGPT
 
 Do not expose `/mcp` until `MCP_AUTH_TOKEN` is set. A tunnel hostname must also
