@@ -1,0 +1,22 @@
+{
+  "name": "@4grow/marketing-data-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Thin MCP adapter for controlled 4GROW marketing data APIs.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/server.mjs",
+    "check": "node --check src/server.mjs && node --check src/config.mjs && node --check src/auth.mjs && node --check src/drupal-client.mjs",
+    "test:list": "node --env-file=.env scripts/test-list-content-types.mjs",
+    "test:schema": "node --env-file=.env scripts/test-get-content-type-schema.mjs",
+    "test:content": "node --env-file=.env scripts/test-get-content.mjs",
+    "test:read-checkpoint": "node --env-file=.env scripts/test-read-checkpoint.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "4.1.5"
+  }
+}
