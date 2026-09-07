@@ -176,14 +176,19 @@ function createServer() {
         'Returns paginated revision history for one accessible Drupal node, newest revision first by default. '
         + 'Without "fields" it returns revision metadata only. Pass "fields" to also read what those fields '
         + 'held in each revision, and add "changes_only" to keep just the revisions where they changed — that '
-        + 'is how to answer when a price, title or meta description was last edited. Every change also reports '
-        + '"compared_to_revision_id", the revision on the other side of it, so the boundary is unambiguous. '
+        + 'is how to answer when a price, title or meta description was last edited. '
+        + 'With "changes_only" every returned item is the revision that introduced the value it carries, so '
+        + 'its author and timestamp are the author and date of that change, in both orders. '
+        + '"compared_to_revision_id" names the revision holding the previous value, so the boundary is '
+        + 'unambiguous. The separate "reference" is the state the comparisons started from: it is the newest '
+        + 'revision read, not a change, because nothing older had been compared to it yet. '
         + 'One call examines a bounded number of revisions and reports "examined"; when "has_more" is true, '
         + 'continue with "after_revision_id" set to "next_after_revision_id". "scan_limit_reached" tells the '
         + 'two endings apart: true means the call stopped at its work limit and older revisions remain, false '
         + 'together with a false "has_more" means the whole history was read. A page may legitimately contain '
         + 'no changes while older ones still do, so keep paging until "has_more" is false before concluding '
-        + 'that a value never changed.',
+        + 'that a value never changed. A non-zero "inaccessible" means some revisions could not be read, so a '
+        + 'reported change may in truth have happened in one of the hidden revisions between the two named.',
       inputSchema: {
         nid: z.number().int().positive().describe('Numeric Drupal node ID.'),
         limit: z.number().int().min(1).max(100).default(50),
@@ -198,8 +203,8 @@ function createServer() {
           ),
         changes_only: z.boolean().default(false)
           .describe(
-            'Return only revisions whose selected fields differ from the previously examined revision. '
-            + 'Requires "fields".',
+            'Return only the revisions that introduced a new value for the selected fields, plus the '
+            + '"reference" state the comparison started from. Requires "fields".',
           ),
       },
       annotations: {

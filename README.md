@@ -40,21 +40,31 @@ Selected fields of a local training node can be checked with
 `get_content_revisions` returns revision metadata by default. Two options make
 it answer questions about how a value changed over time:
 
-- `fields` adds what those fields held in each listed revision.
-- `changes_only` keeps only the revisions where they differ from the previously
-  examined one, and needs `fields`.
+- `fields` adds what those fields held in each listed revision, at most twenty
+  per call.
+- `changes_only` keeps only the revisions that introduced a new value, and needs
+  `fields`.
 
-Each change also carries `compared_to_revision_id`, the revision on the other
-side of it. That pair is what makes the boundary unambiguous, because in the
-default newest-first order the listed revision is the last one holding the
-older value, not the one that introduced the new value:
+Every item returned with `changes_only` is the revision that introduced the
+value it carries, so its author and timestamp answer who changed it and when.
+`compared_to_revision_id` names the revision holding the previous value, which
+makes the boundary unambiguous. Both orders report the same set of changes:
 
 ```text
 nid 4, fields=[field_npxtraining_price], changes_only=true
 
-revision 39458  1890  compared_to_revision_id 39526
-                      the price became 1990 in revision 39526
+reference  revision 41388  1990   the newest state read, not a change
+change     revision 39526  1990   compared_to_revision_id 39458
+                                  Monika Krzywicka, 7 Apr 2026, up from 1890
 ```
+
+The `reference` is deliberately not an item. It is only the state the
+comparisons start from, because nothing older had been compared to it yet, and
+treating it as a change would invent an edit that never happened.
+
+`inaccessible` counts the revisions that could not be read. When it is above
+zero, a reported change may in truth have happened in one of the hidden
+revisions between the two named ones.
 
 Drupal cannot load part of an entity, so every examined revision costs a full
 entity load of roughly 45 ms. One request therefore examines at most 250
