@@ -35,6 +35,33 @@ The dynamic schema can be checked with `npm run test:schema`.
 Selected fields of a local training node can be checked with
 `npm run test:content`. Override its default node ID with `TEST_CONTENT_NID`.
 
+## Reading revision history
+
+`get_content_revisions` returns revision metadata by default. Two options make
+it answer questions about how a value changed over time:
+
+- `fields` adds what those fields held in each listed revision.
+- `changes_only` keeps only the revisions where they differ from the previously
+  examined one, and needs `fields`.
+
+Each change also carries `compared_to_revision_id`, the revision on the other
+side of it. That pair is what makes the boundary unambiguous, because in the
+default newest-first order the listed revision is the last one holding the
+older value, not the one that introduced the new value:
+
+```text
+nid 4, fields=[field_npxtraining_price], changes_only=true
+
+revision 39458  1890  compared_to_revision_id 39526
+                      the price became 1990 in revision 39526
+```
+
+Drupal cannot load part of an entity, so every examined revision costs a full
+entity load of roughly 45 ms. One request therefore examines at most 250
+revisions and reports how many it saw in `examined`. When `has_more` is true,
+continue with `after_revision_id` set to `next_after_revision_id`; the cursor
+always advances, even across a stretch where nothing changed.
+
 ## Timeouts
 
 `DRUPAL_TIMEOUT_MS` caps every outgoing Drupal call. It accepts 1000-120000 and
@@ -55,7 +82,9 @@ real ceiling, so raising this value above it only delays the same failure.
 
 `search_content` is the expensive tool, because it scans and loads nodes one by
 one. Raise the timeout only if searches genuinely need it, and prefer narrowing
-`conditions` and `limit` first.
+`conditions` and `limit` first. `get_content_revisions` with `fields` is the
+next heaviest, which is why its own scan is bounded rather than left to the
+timeout.
 
 ## Deployment
 

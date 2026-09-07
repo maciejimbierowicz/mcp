@@ -18,14 +18,17 @@ const drupalClient = new DrupalClient({
  * Builds a tool error that keeps transport failures diagnosable.
  */
 function toolError(summary, error) {
-  let detail = '';
+  const parts = [summary];
   if (error instanceof DrupalApiError) {
-    detail = error.status ? ` HTTP ${error.status}.` : ` ${error.message}`;
+    if (error.status) {
+      parts.push(`HTTP ${error.status}.`);
+    }
+    parts.push(error.message);
   }
 
   return {
     isError: true,
-    content: [{ type: 'text', text: `${summary}${detail}` }],
+    content: [{ type: 'text', text: parts.join(' ') }],
   };
 }
 
@@ -170,7 +173,13 @@ function createServer() {
     {
       title: 'List Drupal content revisions',
       description:
-        'Returns paginated revision metadata for one accessible Drupal node, newest revision first by default.',
+        'Returns paginated revision history for one accessible Drupal node, newest revision first by default. '
+        + 'Without "fields" it returns revision metadata only. Pass "fields" to also read what those fields '
+        + 'held in each revision, and add "changes_only" to keep just the revisions where they changed — that '
+        + 'is how to answer when a price, title or meta description was last edited. Every change also reports '
+        + '"compared_to_revision_id", the revision on the other side of it, so the boundary is unambiguous. '
+        + 'One call examines a bounded number of revisions and reports "examined"; when "has_more" is true, '
+        + 'continue with "after_revision_id" set to "next_after_revision_id".',
       inputSchema: {
         nid: z.number().int().positive().describe('Numeric Drupal node ID.'),
         limit: z.number().int().min(1).max(100).default(50),
@@ -178,6 +187,16 @@ function createServer() {
           .describe('Cursor. Continues after this revision in the selected order.'),
         order: z.enum(['desc', 'asc']).default('desc')
           .describe('Revision order. "desc" returns the newest revisions first.'),
+        fields: z.array(z.string().min(1)).min(1).max(20).optional()
+          .describe(
+            'Field names to read for every revision. Keep the list short, because each revision is loaded '
+            + 'separately and wide selections are slow.',
+          ),
+        changes_only: z.boolean().default(false)
+          .describe(
+            'Return only revisions whose selected fields differ from the previously examined revision. '
+            + 'Requires "fields".',
+          ),
       },
       annotations: {
         readOnlyHint: true,
@@ -185,11 +204,24 @@ function createServer() {
         openWorldHint: false,
       },
     },
-    async ({ nid, limit, after_revision_id: afterRevisionId, order }) => {
+    async ({
+      nid,
+      limit,
+      after_revision_id: afterRevisionId,
+      order,
+      fields,
+      changes_only: changesOnly,
+    }) => {
       try {
         const query = new URLSearchParams({ limit: String(limit), order });
         if (afterRevisionId !== undefined) {
           query.set('after_revision_id', String(afterRevisionId));
+        }
+        if (fields !== undefined) {
+          query.set('fields', fields.join(','));
+        }
+        if (changesOnly) {
+          query.set('changes_only', '1');
         }
         const result = await drupalClient.get(
           `/api/v1/content/${nid}/revisions?${query.toString()}`,
