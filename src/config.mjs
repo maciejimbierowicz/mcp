@@ -1,3 +1,5 @@
+import { parseTimeoutMs } from './drupal-client.mjs';
+
 function requiredEnvironmentVariable(name) {
   const value = process.env[name]?.trim();
   if (!value) {
@@ -45,4 +47,5 @@ export const config = Object.freeze({
   drupalBaseUrl: parseBaseUrl(requiredEnvironmentVariable('DRUPAL_BASE_URL')),
   drupalUsername: requiredEnvironmentVariable('DRUPAL_USERNAME'),
   drupalPassword: requiredEnvironmentVariable('DRUPAL_PASSWORD'),
+  drupalTimeoutMs: parseTimeoutMs(process.env.DRUPAL_TIMEOUT_MS),
 });

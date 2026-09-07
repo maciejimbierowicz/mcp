@@ -11,7 +11,23 @@ const drupalClient = new DrupalClient({
   baseUrl: config.drupalBaseUrl,
   username: config.drupalUsername,
   password: config.drupalPassword,
+  timeoutMs: config.drupalTimeoutMs,
 });
+
+/**
+ * Builds a tool error that keeps transport failures diagnosable.
+ */
+function toolError(summary, error) {
+  let detail = '';
+  if (error instanceof DrupalApiError) {
+    detail = error.status ? ` HTTP ${error.status}.` : ` ${error.message}`;
+  }
+
+  return {
+    isError: true,
+    content: [{ type: 'text', text: `${summary}${detail}` }],
+  };
+}
 
 function createServer() {
   const server = new McpServer(
@@ -64,18 +80,7 @@ function createServer() {
         };
       }
       catch (error) {
-        const status = error instanceof DrupalApiError && error.status
-          ? ` HTTP ${error.status}.`
-          : '';
-        return {
-          isError: true,
-          content: [
-            {
-              type: 'text',
-              text: `Could not read Drupal content types.${status}`,
-            },
-          ],
-        };
+        return toolError('Could not read Drupal content types.', error);
       }
     },
   );
@@ -112,18 +117,7 @@ function createServer() {
         };
       }
       catch (error) {
-        const status = error instanceof DrupalApiError && error.status
-          ? ` HTTP ${error.status}.`
-          : '';
-        return {
-          isError: true,
-          content: [
-            {
-              type: 'text',
-              text: `Could not read Drupal content type schema.${status}`,
-            },
-          ],
-        };
+        return toolError('Could not read Drupal content type schema.', error);
       }
     },
   );
@@ -166,21 +160,88 @@ function createServer() {
         };
       }
       catch (error) {
-        const status = error instanceof DrupalApiError && error.status
-          ? ` HTTP ${error.status}.`
-          : '';
-        return {
-          isError: true,
-          content: [
-            {
-              type: 'text',
-              text: `Could not read Drupal content.${status}`,
-            },
-          ],
-        };
+        return toolError('Could not read Drupal content.', error);
       }
     },
   );
+
+  server.registerTool(
+    'get_content_revisions',
+    {
+      title: 'List Drupal content revisions',
+      description:
+        'Returns paginated revision metadata for one accessible Drupal node, newest revision first by default.',
+      inputSchema: {
+        nid: z.number().int().positive().describe('Numeric Drupal node ID.'),
+        limit: z.number().int().min(1).max(100).default(50),
+        after_revision_id: z.number().int().nonnegative().optional()
+          .describe('Cursor. Continues after this revision in the selected order.'),
+        order: z.enum(['desc', 'asc']).default('desc')
+          .describe('Revision order. "desc" returns the newest revisions first.'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ nid, limit, after_revision_id: afterRevisionId, order }) => {
+      try {
+        const query = new URLSearchParams({ limit: String(limit), order });
+        if (afterRevisionId !== undefined) {
+          query.set('after_revision_id', String(afterRevisionId));
+        }
+        const result = await drupalClient.get(
+          `/api/v1/content/${nid}/revisions?${query.toString()}`,
+        );
+        return {
+          structuredContent: result,
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+        };
+      }
+      catch (error) {
+        return toolError('Could not read Drupal revisions.', error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'get_content_revision',
+    {
+      title: 'Get Drupal content revision',
+      description: 'Returns one accessible Drupal revision with optional selected fields.',
+      inputSchema: {
+        nid: z.number().int().positive().describe('Numeric Drupal node ID.'),
+        revision_id: z.number().int().positive().describe('Drupal revision ID.'),
+        fields: z.array(z.string().min(1)).max(50).optional(),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ nid, revision_id: revisionId, fields }) => {
+      try {
+        const query = new URLSearchParams();
+        if (fields !== undefined) {
+          query.set('fields', fields.join(','));
+        }
+        const suffix = query.size > 0 ? `?${query.toString()}` : '';
+        const result = await drupalClient.get(
+          `/api/v1/content/${nid}/revisions/${revisionId}${suffix}`,
+        );
+        return {
+          structuredContent: result,
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+        };
+      }
+      catch (error) {
+        return toolError('Could not read Drupal revision.', error);
+      }
+    },
+  );
+
 
   server.registerTool(
     'search_content',
@@ -230,18 +291,7 @@ function createServer() {
         };
       }
       catch (error) {
-        const status = error instanceof DrupalApiError && error.status
-          ? ` HTTP ${error.status}.`
-          : '';
-        return {
-          isError: true,
-          content: [
-            {
-              type: 'text',
-              text: `Could not search Drupal content.${status}`,
-            },
-          ],
-        };
+        return toolError('Could not search Drupal content.', error);
       }
     },
   );

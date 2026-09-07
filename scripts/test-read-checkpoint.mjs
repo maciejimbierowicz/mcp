@@ -60,6 +60,19 @@ assert(
   'revision_author must be null or {uid,name}.',
 );
 
+const revisions = await client.get('/api/v1/content/52/revisions?limit=100');
+assert(Array.isArray(revisions.items), 'Revision list must return items.');
+assert(revisions.items.length > 0, 'Revision list must contain at least one revision.');
+assert(Number.isInteger(revisions.current_revision_id), 'Revision list must expose current revision.');
+assert(revisions.items.every((item) => Number.isInteger(item.revision_id)));
+const firstRevision = revisions.items[0];
+const revision = await client.get(
+  `/api/v1/content/52/revisions/${firstRevision.revision_id}?fields=title,meta_description,revision_log`,
+);
+assert(revision.nid === 52, 'Revision endpoint must return the requested node.');
+assert(revision.revision_id === firstRevision.revision_id, 'Revision endpoint must return requested revision.');
+assert(Object.hasOwn(revision.fields, 'title'), 'Revision endpoint must return selected fields.');
+
 const missingDescription = await client.get(
   '/api/v1/content/2800?fields=title,meta_description,url_alias',
 );

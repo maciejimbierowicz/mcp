@@ -1,11 +1,13 @@
 # 4GROW Marketing Data MCP
 
-Thin, standalone MCP adapter. The first checkpoint currently exposes four
-read-only tools backed by the local Drupal Content API:
+Thin, standalone MCP adapter. It exposes six read-only tools backed by the
+Drupal Content API:
 
 - `list_content_types`,
 - `get_content_type_schema`,
 - `get_content`,
+- `get_content_revisions`,
+- `get_content_revision`,
 - `search_content`.
 
 ## Local start
@@ -32,6 +34,28 @@ With the server running in another terminal, run `npm run test:list`.
 The dynamic schema can be checked with `npm run test:schema`.
 Selected fields of a local training node can be checked with
 `npm run test:content`. Override its default node ID with `TEST_CONTENT_NID`.
+
+## Timeouts
+
+`DRUPAL_TIMEOUT_MS` caps every outgoing Drupal call. It accepts 1000-120000 and
+defaults to 30000. On a timeout the tool returns a normal MCP error result
+saying how long it waited, instead of an unexplained failure.
+
+Keep the chain ordered from the outside in, otherwise the wrong layer gives up
+first and the client only sees a dropped connection:
+
+```text
+MCP client  >  reverse proxy (mcp.4grow.pl)  >  this server  >  Drupal
+                proxy_read_timeout                DRUPAL_TIMEOUT_MS
+```
+
+`DRUPAL_TIMEOUT_MS` must stay below the proxy read timeout, which is 60 s by
+default in Plesk/Nginx. PHP-FPM `max_execution_time` on the Drupal side is the
+real ceiling, so raising this value above it only delays the same failure.
+
+`search_content` is the expensive tool, because it scans and loads nodes one by
+one. Raise the timeout only if searches genuinely need it, and prefer narrowing
+`conditions` and `limit` first.
 
 ## Tunnel / ChatGPT
 
