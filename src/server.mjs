@@ -179,7 +179,11 @@ function createServer() {
         + 'is how to answer when a price, title or meta description was last edited. Every change also reports '
         + '"compared_to_revision_id", the revision on the other side of it, so the boundary is unambiguous. '
         + 'One call examines a bounded number of revisions and reports "examined"; when "has_more" is true, '
-        + 'continue with "after_revision_id" set to "next_after_revision_id".',
+        + 'continue with "after_revision_id" set to "next_after_revision_id". "scan_limit_reached" tells the '
+        + 'two endings apart: true means the call stopped at its work limit and older revisions remain, false '
+        + 'together with a false "has_more" means the whole history was read. A page may legitimately contain '
+        + 'no changes while older ones still do, so keep paging until "has_more" is false before concluding '
+        + 'that a value never changed.',
       inputSchema: {
         nid: z.number().int().positive().describe('Numeric Drupal node ID.'),
         limit: z.number().int().min(1).max(100).default(50),

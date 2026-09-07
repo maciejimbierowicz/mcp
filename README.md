@@ -62,6 +62,17 @@ revisions and reports how many it saw in `examined`. When `has_more` is true,
 continue with `after_revision_id` set to `next_after_revision_id`; the cursor
 always advances, even across a stretch where nothing changed.
 
+`scan_limit_reached` separates the two ways a call can end. True means the work
+limit stopped it and older revisions are still waiting, so a page holding no
+changes proves nothing on its own. False alongside a false `has_more` means the
+history really ended. Reading the full 822-revision history of one training
+takes four calls of about ten seconds each.
+
+Revision history also needs its own Drupal permission. Being able to read the
+current page is not enough: the account needs `view <bundle> revisions` or
+`view all revisions`, otherwise both revision endpoints answer 403 rather than
+pretending the history is empty.
+
 ## Timeouts
 
 `DRUPAL_TIMEOUT_MS` caps every outgoing Drupal call. It accepts 1000-120000 and
