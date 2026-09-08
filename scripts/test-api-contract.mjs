@@ -208,6 +208,10 @@ assert(
   emptyMetaQuizzes.items.every((item) => Object.hasOwn(item, 'meta_description') && item.meta_description === null),
   'Empty-meta quiz hits must keep meta_description as a present null.',
 );
+assert(
+  Number.isInteger(emptyMetaQuizzes.inaccessible) && emptyMetaQuizzes.inaccessible >= 0,
+  'Search must report inaccessible.',
+);
 
 const emptyMetaLandings = await client.post('/api/v1/content/search', {
   content_type: 'landing_page',

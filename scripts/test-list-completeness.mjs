@@ -18,6 +18,7 @@ function assertPageShape(page, { afterNid = 0 } = {}) {
   assert(page.count <= page.limit, 'A page cannot exceed its limit.');
   assert(typeof page.has_more === 'boolean', 'has_more is required.');
   assert(typeof page.scan_limit_reached === 'boolean', 'scan_limit_reached is required.');
+  assert(Number.isInteger(page.inaccessible) && page.inaccessible >= 0, 'inaccessible is required.');
   if (page.has_more) {
     assert(
       Number.isInteger(page.next_after_nid) && page.next_after_nid > afterNid,

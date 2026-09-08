@@ -85,8 +85,3 @@ export function logMcpEvent({ requestId, tool, durationMs, result, code = null }
   }
   process.stderr.write(`${JSON.stringify(entry)}\n`);
 }
-
-export const HEAVY_TOOLS = new Set([
-  'search_content',
-  'get_content_revisions',
-]);

@@ -56,6 +56,7 @@ const searchGet = await fetch(new URL('/api/v1/content/search', `${process.env.D
   },
 });
 assert(searchGet.status === 405, `Search GET must be 405, got ${searchGet.status}.`);
+assert(searchGet.headers.get('allow')?.includes('POST'), 'Search GET must advertise Allow: POST.');
 
 const unauthorized = await fetch(new URL('/api/v1/content/types', `${process.env.DRUPAL_BASE_URL}/`), {
   headers: { Accept: 'application/json' },

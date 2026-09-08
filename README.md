@@ -20,8 +20,10 @@ The Drupal envelope and the six tool payloads are documented in the Drupal
 repo file `instrukcje-zadan/drupal-chat-integration/GROW-1049_READ_API_CONTRACT.md`.
 Success is `{ data }`. Failures are `{ error: { status, code, message } }`.
 `code` is one of `not_found`, `unknown_field`, `unsupported_type`,
-`access_denied`, `invalid_request`, or `timeout` (MCP-only, when Drupal does
-not answer in time). Tool errors include that `code` in the text.
+`access_denied`, `invalid_request`, `response_too_large`, `busy`, or
+`timeout` (MCP-only, when Drupal does not answer in time). Tool errors include that `code` in the text.
+On `response_too_large`, retry with fewer fields or a lower limit. On `busy`,
+wait and retry once.
 
 A field present with `null` is an empty stored value. A field absent from
 `fields` was omitted because the account cannot view it or it was not
@@ -46,6 +48,8 @@ stopped after 5000 candidate nodes, so later content was not scanned and a
 short or empty page is not proof that nothing remains. For revisions it means
 the 250-revision work limit stopped the scan. The list is complete only when
 `has_more` is false. Stopping earlier is a partial result, not every match.
+Search `inaccessible` counts candidates skipped because a filtered field could
+not be read; an absent node is then not proof that it fails the filter.
 
 ## Local start
 
@@ -203,10 +207,12 @@ instructions. Regression prompts for a live ChatGPT pass are in
 `prompts/chatgpt-read-regression.md`: a data question, an ambiguous question,
 a WRITE request, Drupal content that looks like instructions, and a long list.
 
-Default answer shape the instructions ask for: short Polish, a NID/title
-table, and whether the list is complete or partial. `null` meta fields are
-stored overrides, not proof that HTML tags are missing. A table is enough;
-do not promise CSV/XLSX as a backend feature.
+Default answer shape the instructions ask for: Polish, a NID/title table, and
+whether the list is complete or partial. Do not write a report unless asked.
+When the user asks for a report, summary, CSV or Excel, ask one short question
+which form they want, then build it in the chat from fetched rows. MCP has no
+export or document tool. `null` meta fields are stored overrides, not proof
+that HTML tags are missing.
 
 ## Security boundary
 

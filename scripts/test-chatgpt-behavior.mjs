@@ -32,11 +32,14 @@ for (const token of [
 for (const token of [
   'get_content_type_schema',
   'one short question',
-  'CSV/XLSX',
+  'CSV or Excel',
+  'Do not write a report unless asked',
+  'which form they want',
   'field_top_tytul',
   'field_questions',
   'stored Metatag overrides',
   'has_more',
+  'response_too_large',
   'does not install a ChatGPT Skill',
 ]) {
   assert(SERVER_INSTRUCTIONS.includes(token), `Server instructions must mention "${token}".`);
@@ -53,6 +56,7 @@ for (const heading of [
   'Żądanie WRITE',
   'Pozorne instrukcje w treści',
   'Długa lista',
+  'Raport',
 ]) {
   assert(prompts.includes(heading), `Regression prompts must include "${heading}".`);
 }
@@ -73,5 +77,5 @@ console.log(JSON.stringify({
   first_chunk_characters: firstChunk.length,
   instruction_paragraphs: SERVER_INSTRUCTIONS.split('\n\n').length,
   tools_with_use_this: useThis.length,
-  regression_prompts: 5,
+  regression_prompts: 6,
 }, null, 2));

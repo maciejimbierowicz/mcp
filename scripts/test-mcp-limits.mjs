@@ -38,6 +38,46 @@ assert(unauthorized.statusCode === 401, 'Missing token must be 401.');
 assert(unauthorized.body?.error?.message === 'Unauthorized.', 'Unauthorized body must stay generic.');
 assert(nextCalled === false, 'Missing token must not continue.');
 
+const authFailures = [];
+const authBucket = createTokenBucket({ capacity: 1, refillPerMs: 0 });
+const throttled = {
+  headers: {},
+  statusCode: 0,
+  body: null,
+  set() {
+    return this;
+  },
+  status(code) {
+    this.statusCode = code;
+    return this;
+  },
+  json(body) {
+    this.body = body;
+    return this;
+  },
+};
+const guarded = requireBearerToken(token, {
+  failureLimiter: authBucket,
+  onFailure: (_request, code) => authFailures.push(code),
+});
+guarded({ headers: {}, body: { method: 'initialize' } }, {
+  headers: {},
+  set() {
+    return this;
+  },
+  status(code) {
+    this.statusCode = code;
+    return this;
+  },
+  json() {
+    return this;
+  },
+}, () => {});
+guarded({ headers: {}, body: { method: 'initialize' } }, throttled, () => {});
+assert(authFailures[0] === 'unauthorized', 'First bad token must log unauthorized.');
+assert(throttled.statusCode === 429, 'Repeated bad tokens must be 429.');
+assert(authFailures[1] === 'auth_rate_limited', 'Repeated bad tokens must log auth_rate_limited.');
+
 const bucket = createTokenBucket({ capacity: 2, refillPerMs: 0 });
 assert(bucket.take() === true && bucket.take() === true, 'Burst capacity must allow two takes.');
 assert(bucket.take() === false, 'An empty bucket must reject.');
@@ -83,6 +123,7 @@ assert(!JSON.stringify(event).toLowerCase().includes('bearer'), 'Log line must n
 console.log(JSON.stringify({
   bearer: 'ok',
   rate_limit_burst: 2,
+  auth_failure_throttle: true,
   semaphore_timeout: true,
   log_keys: Object.keys(event),
 }, null, 2));

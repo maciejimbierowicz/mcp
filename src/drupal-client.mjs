@@ -75,7 +75,24 @@ export class DrupalClient {
       throw new DrupalApiError('Drupal could not be reached.');
     }
 
-    const payload = await this.readJson(response);
+    const declaredBytes = Number.parseInt(response.headers.get('content-length') ?? '', 10);
+    if (Number.isInteger(declaredBytes) && declaredBytes > this.maxResponseBytes) {
+      throw new DrupalApiError(
+        'The Drupal JSON response is too large.',
+        413,
+        'response_too_large',
+      );
+    }
+
+    const { payload, bytes } = await this.readJson(response);
+    if (bytes > this.maxResponseBytes) {
+      throw new DrupalApiError(
+        'The Drupal JSON response is too large.',
+        413,
+        'response_too_large',
+      );
+    }
+
     if (!response.ok) {
       const apiMessage = payload?.error?.message;
       const apiCode = payload?.error?.code;
@@ -92,21 +109,50 @@ export class DrupalClient {
       throw new DrupalApiError('Drupal API returned an unexpected response.');
     }
 
-    const encoded = JSON.stringify(payload);
-    if (Buffer.byteLength(encoded, 'utf8') > this.maxResponseBytes) {
-      throw new DrupalApiError(
-        'The JSON response is too large.',
-        413,
-        'invalid_request',
-      );
-    }
-
     return payload.data;
   }
 
   async readJson(response) {
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new DrupalApiError(
+        `Drupal API response could not be read with HTTP ${response.status}.`,
+        response.status,
+      );
+    }
+
+    const chunks = [];
+    let bytes = 0;
     try {
-      return await response.json();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        bytes += value.byteLength;
+        if (bytes > this.maxResponseBytes) {
+          await reader.cancel();
+          throw new DrupalApiError(
+            'The Drupal JSON response is too large.',
+            413,
+            'response_too_large',
+          );
+        }
+        chunks.push(Buffer.from(value));
+      }
+    }
+    catch (error) {
+      if (error instanceof DrupalApiError) {
+        throw error;
+      }
+      throw new DrupalApiError(
+        `Drupal API response could not be read with HTTP ${response.status}.`,
+        response.status,
+      );
+    }
+
+    try {
+      return { payload: JSON.parse(Buffer.concat(chunks, bytes).toString('utf8')), bytes };
     }
     catch {
       throw new DrupalApiError(

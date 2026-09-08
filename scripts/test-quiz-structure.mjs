@@ -59,9 +59,25 @@ assert(
   answers.every((item) => item.entity_type === 'npxqanswer' && (item.fields?.field_answer_text || item.label)),
   'Each answer must expose visible text or a label.',
 );
+const allowedQuestionFields = new Set([
+  'field_question_text',
+  'field_answers',
+  'field_multiple',
+  'field_category',
+]);
+const allowedAnswerFields = new Set(['field_answer_text']);
+
 assert(
-  answers.every((item) => scoringKeys(item).length === 0),
-  'Scoring and hint-key fields must not appear on expanded answers.',
+  quiz.fields.field_questions.items.every((item) => Object.keys(item.fields ?? {}).every(
+    (name) => allowedQuestionFields.has(name),
+  )),
+  'Expanded questions must expose only the approved field allowlist.',
+);
+assert(
+  answers.every((item) => Object.keys(item.fields ?? {}).every(
+    (name) => allowedAnswerFields.has(name),
+  )),
+  'Expanded answers must expose only field_answer_text.',
 );
 assert(
   quiz.fields.field_questions.items.every((item) => scoringKeys(item).length === 0),

@@ -28,6 +28,10 @@ const mcpRateLimiter = createTokenBucket({
   capacity: config.rateBurst,
   refillPerMs: config.rateLimitPerMin / 60000,
 });
+const authFailureLimiter = createTokenBucket({
+  capacity: config.rateBurst,
+  refillPerMs: config.rateLimitPerMin / 60000,
+});
 const heavyConcurrency = createSemaphore(config.heavyConcurrency);
 
 const fieldMap = z.record(z.string(), z.any());
@@ -56,16 +60,24 @@ const schemaFieldOutput = z.object({
   read_only: z.boolean(),
 });
 
-function toolError(summary, error) {
+function toolError(summary, error, audit) {
   const parts = [summary];
+  let code = 'internal';
   if (error instanceof DrupalApiError) {
     if (error.code) {
       parts.push(`code ${error.code}.`);
+      code = error.code;
+    }
+    else if (error.status) {
+      code = `http_${error.status}`;
     }
     if (error.status) {
       parts.push(`HTTP ${error.status}.`);
     }
     parts.push(error.message);
+  }
+  if (audit) {
+    audit.code = code;
   }
 
   return {
@@ -74,15 +86,18 @@ function toolError(summary, error) {
   };
 }
 
-async function runHeavyTool(summary, fn) {
+async function runHeavyTool(summary, audit, fn) {
   let release;
   try {
     release = await heavyConcurrency.acquire(config.heavyWaitMs);
   }
   catch {
+    if (audit) {
+      audit.code = 'busy';
+    }
     return {
       isError: true,
-      content: [{ type: 'text', text: `${summary} Too many concurrent Drupal reads.` }],
+      content: [{ type: 'text', text: `${summary} code busy. Too many concurrent Drupal reads.` }],
     };
   }
   try {
@@ -93,7 +108,7 @@ async function runHeavyTool(summary, fn) {
   }
 }
 
-function createServer() {
+function createServer(audit = null) {
   const server = new McpServer(
     {
       name: '4grow-marketing-data',
@@ -143,7 +158,7 @@ function createServer() {
         };
       }
       catch (error) {
-        return toolError('Could not read Drupal content types.', error);
+        return toolError('Could not read Drupal content types.', error, audit);
       }
     },
   );
@@ -187,7 +202,7 @@ function createServer() {
         };
       }
       catch (error) {
-        return toolError('Could not read Drupal content type schema.', error);
+        return toolError('Could not read Drupal content type schema.', error, audit);
       }
     },
   );
@@ -240,7 +255,7 @@ function createServer() {
         };
       }
       catch (error) {
-        return toolError('Could not read Drupal content.', error);
+        return toolError('Could not read Drupal content.', error, audit);
       }
     },
   );
@@ -316,7 +331,7 @@ function createServer() {
       order,
       fields,
       changes_only: changesOnly,
-    }) => runHeavyTool('Could not read Drupal revisions.', async () => {
+    }) => runHeavyTool('Could not read Drupal revisions.', audit, async () => {
       try {
         const query = new URLSearchParams({ limit: String(limit), order });
         if (afterRevisionId !== undefined) {
@@ -337,7 +352,7 @@ function createServer() {
         };
       }
       catch (error) {
-        return toolError('Could not read Drupal revisions.', error);
+        return toolError('Could not read Drupal revisions.', error, audit);
       }
     }),
   );
@@ -397,7 +412,7 @@ function createServer() {
         };
       }
       catch (error) {
-        return toolError('Could not read Drupal revision.', error);
+        return toolError('Could not read Drupal revision.', error, audit);
       }
     },
   );
@@ -416,7 +431,9 @@ function createServer() {
         + '"scan_limit_reached" tells the two endings apart: true means this call stopped at the 5000-candidate '
         + 'work limit and later nodes were not scanned, so keep paging even if this page is short or empty. '
         + 'False together with a false "has_more" means the scan really ended. '
-        + 'Do not say every match was found until "has_more" is false. Until then the result is partial.',
+        + 'Do not say every match was found until "has_more" is false. Until then the result is partial. '
+        + 'A non-zero "inaccessible" means candidate nodes were skipped because a filtered field could not be '
+        + 'read, so an absent node is not proof that it fails the filter.',
       inputSchema: {
         content_type: z.string().min(1).max(64),
         conditions: z.array(
@@ -452,6 +469,7 @@ function createServer() {
         has_more: z.boolean(),
         next_after_nid: z.union([z.number().int(), z.null()]),
         scan_limit_reached: z.boolean(),
+        inaccessible: z.number().int(),
       },
       annotations: {
         readOnlyHint: true,
@@ -459,7 +477,7 @@ function createServer() {
         openWorldHint: false,
       },
     },
-    async (input) => runHeavyTool('Could not search Drupal content.', async () => {
+    async (input) => runHeavyTool('Could not search Drupal content.', audit, async () => {
       try {
         const result = await drupalClient.post('/api/v1/content/search', input);
         return {
@@ -468,7 +486,7 @@ function createServer() {
         };
       }
       catch (error) {
-        return toolError('Could not search Drupal content.', error);
+        return toolError('Could not search Drupal content.', error, audit);
       }
     }),
   );
@@ -485,9 +503,22 @@ app.get('/health', (_request, response) => {
   response.json({ status: 'ok' });
 });
 
-app.use('/mcp', requireBearerToken(config.mcpAuthToken));
+app.use('/mcp', requireBearerToken(config.mcpAuthToken, {
+  failureLimiter: authFailureLimiter,
+  onFailure: (request, code) => logMcpEvent({
+    requestId: randomUUID(),
+    tool: mcpToolName(request.body),
+    durationMs: 0,
+    result: 'error',
+    code,
+  }),
+}));
 
 app.use('/mcp', (request, response, next) => {
+  if (request.method !== 'POST') {
+    next();
+    return;
+  }
   if (!mcpRateLimiter.take()) {
     const requestId = randomUUID();
     logMcpEvent({
@@ -511,11 +542,23 @@ app.post('/mcp', async (request, response) => {
   const requestId = randomUUID();
   const tool = mcpToolName(request.body);
   const started = Date.now();
-  const server = createServer();
+  const audit = { code: null };
+  const server = createServer(audit);
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
   });
+
+  let released = false;
+  const releaseTransport = () => {
+    if (released) {
+      return;
+    }
+    released = true;
+    transport.close();
+    server.close();
+  };
+  response.on('close', releaseTransport);
 
   try {
     await server.connect(transport);
@@ -524,7 +567,8 @@ app.post('/mcp', async (request, response) => {
       requestId,
       tool,
       durationMs: Date.now() - started,
-      result: 'ok',
+      result: audit.code === null ? 'ok' : 'error',
+      code: audit.code,
     });
   }
   catch (error) {
@@ -544,10 +588,9 @@ app.post('/mcp', async (request, response) => {
     }
   }
   finally {
-    response.on('close', () => {
-      transport.close();
-      server.close();
-    });
+    if (response.closed || response.destroyed) {
+      releaseTransport();
+    }
   }
 });
 
