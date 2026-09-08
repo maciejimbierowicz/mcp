@@ -32,10 +32,11 @@ export class DrupalApiError extends Error {
 }
 
 export class DrupalClient {
-  constructor({ baseUrl, username, password, timeoutMs }) {
+  constructor({ baseUrl, username, password, timeoutMs, maxResponseBytes }) {
     this.baseUrl = baseUrl;
     this.authorization = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
     this.timeoutMs = timeoutMs ?? parseTimeoutMs(process.env.DRUPAL_TIMEOUT_MS);
+    this.maxResponseBytes = maxResponseBytes ?? 2097152;
   }
 
   async get(path) {
@@ -89,6 +90,15 @@ export class DrupalClient {
 
     if (!payload || typeof payload !== 'object' || !('data' in payload)) {
       throw new DrupalApiError('Drupal API returned an unexpected response.');
+    }
+
+    const encoded = JSON.stringify(payload);
+    if (Buffer.byteLength(encoded, 'utf8') > this.maxResponseBytes) {
+      throw new DrupalApiError(
+        'The JSON response is too large.',
+        413,
+        'invalid_request',
+      );
     }
 
     return payload.data;

@@ -135,8 +135,16 @@ MCP client  >  reverse proxy (mcp.4grow.pl)  >  this server  >  Drupal
 ```
 
 `DRUPAL_TIMEOUT_MS` must stay below the proxy read timeout, which is 60 s by
-default in Plesk/Nginx. PHP-FPM `max_execution_time` on the Drupal side is the
-real ceiling, so raising this value above it only delays the same failure.
+default in Plesk/Nginx. Local `drush runserver` has no PHP `max_execution_time`
+cap (0 / unlimited). Production PHP-FPM must stay at or above this Drupal
+timeout; that FPM value is NOT VERIFIED here.
+
+`search_content` and `get_content_revisions` share a process semaphore of two
+concurrent Drupal reads (`MCP_HEAVY_CONCURRENCY`). Extra calls wait up to
+`MCP_HEAVY_WAIT_MS` (default 10 s), then the tool returns an error instead of
+opening a third scan. `/mcp` is also limited to `MCP_RATE_LIMIT_PER_MIN`
+(default 30) with burst `MCP_RATE_BURST` (default 10). Drupal and this client
+reject JSON larger than `MCP_MAX_RESPONSE_BYTES` (default 2 MB).
 
 `search_content` is the expensive tool, because it scans and loads nodes one by
 one. Raise the timeout only if searches genuinely need it, and prefer narrowing
@@ -184,14 +192,35 @@ Official OpenAI split:
 - A published ChatGPT **plugin** needs OAuth 2.1 (protected-resource metadata,
   authorization server, CIMD/DCR). That is not implemented here yet.
 
+ChatGPT developer mode pulls `instructions` and tool descriptions from this
+server. OpenAI asks that the first 512 characters of `instructions` stand
+alone; ours name the three types, the three read flows, Polish table answers,
+and completeness. Refresh the app after deploy so ChatGPT does not keep a
+stale tool list.
+
+MCP does not install a ChatGPT Skill and cannot force the model to obey the
+instructions. Regression prompts for a live ChatGPT pass are in
+`prompts/chatgpt-read-regression.md`: a data question, an ambiguous question,
+a WRITE request, Drupal content that looks like instructions, and a long list.
+
+Default answer shape the instructions ask for: short Polish, a NID/title
+table, and whether the list is complete or partial. `null` meta fields are
+stored overrides, not proof that HTML tags are missing. A table is enough;
+do not promise CSV/XLSX as a backend feature.
+
 ## Security boundary
 
 - Drupal credentials are read from environment variables and never returned
   in MCP tool results.
-- The inbound MCP token is separate from the Drupal password. It only proves
-  the caller may use this adapter.
-- The tool is annotated as read-only and non-destructive.
+- The inbound MCP token is a single application key, not a human identity.
+  Whoever holds it can call every read tool. Keep it on the approved ChatGPT
+  connector only. Drupal Basic auth is a separate service account.
+- The tool is annotated as read-only and non-destructive. There are six tools
+  and none of them write.
 - Drupal independently enforces its bundle allowlist, entity access, role, and
   permission.
 - Drupal content returned by tools is untrusted data, not model instructions.
 - The server binds to loopback only during local development.
+- `/mcp` audit logs are one JSON line on stderr: `request_id`, tool name,
+  duration, `ok`/`error`. They never include Authorization, Drupal passwords,
+  or field values. `/health` stays unauthenticated and does not call Drupal.

@@ -40,6 +40,17 @@ function parseAllowedHosts(value) {
   return [...new Set(hosts)];
 }
 
+function parseBoundedInt(name, value, fallback, min, max) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return fallback;
+  }
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${name} must be an integer between ${min} and ${max}.`);
+  }
+  return parsed;
+}
+
 export const config = Object.freeze({
   port: parsePort(process.env.MCP_PORT),
   allowedHosts: parseAllowedHosts(process.env.MCP_ALLOWED_HOSTS),
@@ -48,4 +59,9 @@ export const config = Object.freeze({
   drupalUsername: requiredEnvironmentVariable('DRUPAL_USERNAME'),
   drupalPassword: requiredEnvironmentVariable('DRUPAL_PASSWORD'),
   drupalTimeoutMs: parseTimeoutMs(process.env.DRUPAL_TIMEOUT_MS),
+  rateLimitPerMin: parseBoundedInt('MCP_RATE_LIMIT_PER_MIN', process.env.MCP_RATE_LIMIT_PER_MIN, 30, 1, 600),
+  rateBurst: parseBoundedInt('MCP_RATE_BURST', process.env.MCP_RATE_BURST, 10, 1, 100),
+  heavyConcurrency: parseBoundedInt('MCP_HEAVY_CONCURRENCY', process.env.MCP_HEAVY_CONCURRENCY, 2, 1, 8),
+  heavyWaitMs: parseBoundedInt('MCP_HEAVY_WAIT_MS', process.env.MCP_HEAVY_WAIT_MS, 10000, 100, 60000),
+  maxResponseBytes: parseBoundedInt('MCP_MAX_RESPONSE_BYTES', process.env.MCP_MAX_RESPONSE_BYTES, 2097152, 65536, 8388608),
 });
