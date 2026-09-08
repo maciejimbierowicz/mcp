@@ -34,6 +34,19 @@ Drupal also enforces the same input limits as the tools: at most 50 fields
 (20 on a revision listing), 10 search conditions, 50 `in` values, 500
 characters per search value, 10 expand paths, and positive numeric IDs.
 
+## Listing completeness
+
+`list_content_types` returns the whole allowlist. `search_content` and
+`get_content_revisions` do not. A page that fills `limit` is still partial
+when `has_more` is true: continue with `after_nid` / `after_revision_id` set
+to `next_after_nid` / `next_after_revision_id`.
+
+`scan_limit_reached` is the other ending. For search it means this call
+stopped after 5000 candidate nodes, so later content was not scanned and a
+short or empty page is not proof that nothing remains. For revisions it means
+the 250-revision work limit stopped the scan. The list is complete only when
+`has_more` is false. Stopping earlier is a partial result, not every match.
+
 ## Local start
 
 1. Copy `.env.example` to the ignored `.env` and provide local credentials,

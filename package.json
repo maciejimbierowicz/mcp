@@ -19,7 +19,8 @@
     "test:reference-expansion": "node --env-file=.env scripts/test-reference-expansion.mjs",
     "test:quizzes": "node --env-file=.env scripts/test-quizzes.mjs",
     "test:quiz-structure": "node --env-file=.env scripts/test-quiz-structure.mjs",
-    "test:api-contract": "node --env-file=.env scripts/test-api-contract.mjs"
+    "test:api-contract": "node --env-file=.env scripts/test-api-contract.mjs",
+    "test:list-completeness": "node --env-file=.env scripts/test-list-completeness.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
