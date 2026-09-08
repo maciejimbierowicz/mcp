@@ -14,7 +14,9 @@
     "test:schema": "node --env-file=.env scripts/test-get-content-type-schema.mjs",
     "test:content": "node --env-file=.env scripts/test-get-content.mjs",
     "test:read-checkpoint": "node --env-file=.env scripts/test-read-checkpoint.mjs",
-    "test:revision-changes": "node --env-file=.env scripts/test-revision-changes.mjs"
+    "test:revision-changes": "node --env-file=.env scripts/test-revision-changes.mjs",
+    "test:landing-pages": "node --env-file=.env scripts/test-landing-pages.mjs",
+    "test:reference-expansion": "node --env-file=.env scripts/test-reference-expansion.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",

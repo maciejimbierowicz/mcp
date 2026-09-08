@@ -10,6 +10,9 @@ Drupal Content API:
 - `get_content_revision`,
 - `search_content`.
 
+The Drupal allowlist currently exposes `npxtraining` and `landing_page`.
+Quiz content is not available through these tools yet.
+
 ## Local start
 
 1. Copy `.env.example` to the ignored `.env` and provide local credentials,
