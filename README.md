@@ -10,8 +10,29 @@ Drupal Content API:
 - `get_content_revision`,
 - `search_content`.
 
-The Drupal allowlist currently exposes `npxtraining` and `landing_page`.
-Quiz content is not available through these tools yet.
+The Drupal allowlist currently exposes `npxtraining`, `landing_page` and
+`npxquiz`. Quiz structure is read with `expand` on `field_questions` and
+`field_questions.field_answers`. Scoring, hints that reveal the key,
+participant records, and `npx_test` entities are omitted. Expanding a quiz
+does not solve it and does not load attempt results.
+
+The Drupal envelope and the six tool payloads are documented in the Drupal
+repo file `instrukcje-zadan/drupal-chat-integration/GROW-1049_READ_API_CONTRACT.md`.
+Success is `{ data }`. Failures are `{ error: { status, code, message } }`.
+`code` is one of `not_found`, `unknown_field`, `unsupported_type`,
+`access_denied`, `invalid_request`, or `timeout` (MCP-only, when Drupal does
+not answer in time). Tool errors include that `code` in the text.
+
+A field present with `null` is an empty stored value. A field absent from
+`fields` was omitted because the account cannot view it or it was not
+selected. Unexpanded references stay as `{ target_id }` without nested
+`fields`. Failed expansions add `expansion_status`: `unavailable`, `cycle`,
+`depth_limit`, `truncated`, or `forbidden`. Search never treats an omitted
+field as empty.
+
+Drupal also enforces the same input limits as the tools: at most 50 fields
+(20 on a revision listing), 10 search conditions, 50 `in` values, 500
+characters per search value, 10 expand paths, and positive numeric IDs.
 
 ## Local start
 

@@ -23,10 +23,11 @@ export function parseTimeoutMs(value, fallback = DEFAULT_TIMEOUT_MS) {
 }
 
 export class DrupalApiError extends Error {
-  constructor(message, status = null) {
+  constructor(message, status = null, code = null) {
     super(message);
     this.name = 'DrupalApiError';
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -66,6 +67,8 @@ export class DrupalClient {
       if (error instanceof Error && error.name === 'TimeoutError') {
         throw new DrupalApiError(
           `Drupal did not respond within ${this.timeoutMs} ms.`,
+          null,
+          'timeout',
         );
       }
       throw new DrupalApiError('Drupal could not be reached.');
@@ -74,11 +77,13 @@ export class DrupalClient {
     const payload = await this.readJson(response);
     if (!response.ok) {
       const apiMessage = payload?.error?.message;
+      const apiCode = payload?.error?.code;
       throw new DrupalApiError(
         typeof apiMessage === 'string'
           ? apiMessage
           : `Drupal API returned HTTP ${response.status}.`,
         response.status,
+        typeof apiCode === 'string' ? apiCode : null,
       );
     }
 

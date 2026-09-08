@@ -16,7 +16,10 @@
     "test:read-checkpoint": "node --env-file=.env scripts/test-read-checkpoint.mjs",
     "test:revision-changes": "node --env-file=.env scripts/test-revision-changes.mjs",
     "test:landing-pages": "node --env-file=.env scripts/test-landing-pages.mjs",
-    "test:reference-expansion": "node --env-file=.env scripts/test-reference-expansion.mjs"
+    "test:reference-expansion": "node --env-file=.env scripts/test-reference-expansion.mjs",
+    "test:quizzes": "node --env-file=.env scripts/test-quizzes.mjs",
+    "test:quiz-structure": "node --env-file=.env scripts/test-quiz-structure.mjs",
+    "test:api-contract": "node --env-file=.env scripts/test-api-contract.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
