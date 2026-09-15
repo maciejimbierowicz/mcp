@@ -44,6 +44,7 @@ for (const token of [
   'response_too_large',
   'does not install a ChatGPT Skill',
   'explicit confirmation',
+  'preview_training_bulk_update',
 ]) {
   assert(SERVER_INSTRUCTIONS.includes(token), `Server instructions must mention "${token}".`);
 }

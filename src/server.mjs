@@ -312,6 +312,52 @@ function createServer(audit = null) {
     );
 
     server.registerTool(
+      'preview_training_bulk_update',
+      {
+        title: 'Preview bulk training update',
+        description:
+          'Creates one non-persistent preview for 1-10 npxtraining updates after search_content. Use the current revision ID of every training. Show the complete returned batch and ask once for explicit confirmation. This preview cannot be committed until the separate bulk commit tool is enabled.',
+        inputSchema: {
+          items: z.array(z.object({
+            nid: z.number().int().positive(),
+            expected_revision_id: z.number().int().positive(),
+            updates: z.object({
+              title: z.string().min(1).max(255).optional(),
+              meta_title: z.string().max(255).nullable().optional(),
+              meta_description: z.string().max(320).nullable().optional(),
+            }).refine((value) => Object.keys(value).length > 0, 'At least one update is required.'),
+          })).min(1).max(10).refine(
+            (items) => new Set(items.map((item) => item.nid)).size === items.length,
+            'Every nid must be unique.',
+          ),
+        },
+        outputSchema: {
+          content_type: z.literal('npxtraining'),
+          item_count: z.number().int().min(1).max(10),
+          items: z.array(z.object({
+            nid: z.number().int(),
+            content_type: z.literal('npxtraining'),
+            current_revision_id: z.number().int(),
+            changes: z.array(z.record(z.string(), z.any())),
+            unchanged: z.array(z.string()),
+          })),
+          preview_token: z.string(),
+          expires_at: z.string(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      async ({ items }) => {
+        try {
+          const result = await drupalWriteClient.post('/api/v1/content/bulk/preview', { items });
+          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+        catch (error) {
+          return toolError('Could not preview bulk training update.', error, audit);
+        }
+      },
+    );
+
+    server.registerTool(
       'commit_training_update',
       {
         title: 'Commit confirmed training update',
