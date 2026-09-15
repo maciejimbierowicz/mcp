@@ -23,6 +23,15 @@ const drupalClient = new DrupalClient({
   timeoutMs: config.drupalTimeoutMs,
   maxResponseBytes: config.maxResponseBytes,
 });
+const drupalWriteClient = config.writeEnabled
+  ? new DrupalClient({
+    baseUrl: config.drupalBaseUrl,
+    username: config.drupalWriteUsername,
+    password: config.drupalWritePassword,
+    timeoutMs: config.drupalTimeoutMs,
+    maxResponseBytes: config.maxResponseBytes,
+  })
+  : null;
 
 const mcpRateLimiter = createTokenBucket({
   capacity: config.rateBurst,
@@ -259,6 +268,82 @@ function createServer(audit = null) {
       }
     },
   );
+
+  if (drupalWriteClient) {
+    server.registerTool(
+      'preview_training_update',
+      {
+        title: 'Preview training update',
+        description:
+          'Creates a non-persistent preview for an npxtraining update. Only title, meta_title and meta_description are allowed. Always show the returned changes and ask for explicit confirmation before calling commit_training_update.',
+        inputSchema: {
+          nid: z.number().int().positive(),
+          expected_revision_id: z.number().int().positive(),
+          updates: z.object({
+            title: z.string().min(1).max(255).optional(),
+            meta_title: z.string().max(255).nullable().optional(),
+            meta_description: z.string().max(320).nullable().optional(),
+          }).refine((value) => Object.keys(value).length > 0, 'At least one update is required.'),
+        },
+        outputSchema: {
+          nid: z.number().int(),
+          content_type: z.literal('npxtraining'),
+          current_revision_id: z.number().int(),
+          changes: z.array(z.record(z.string(), z.any())),
+          unchanged: z.array(z.string()),
+          preview_token: z.string(),
+          expires_at: z.string(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      async (input) => {
+        try {
+          const result = await drupalWriteClient.post(`/api/v1/content/${input.nid}/preview`, {
+            nid: input.nid,
+            expected_revision_id: input.expected_revision_id,
+            updates: input.updates,
+          });
+          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+        catch (error) {
+          return toolError('Could not preview training update.', error, audit);
+        }
+      },
+    );
+
+    server.registerTool(
+      'commit_training_update',
+      {
+        title: 'Commit confirmed training update',
+        description:
+          'Commits exactly the changes from a preview token. Call only after the user explicitly confirms the displayed preview. Never accept or invent update values here.',
+        inputSchema: {
+          preview_token: z.string().regex(/^[a-f0-9]{64}$/),
+          confirmed: z.literal(true),
+        },
+        outputSchema: {
+          nid: z.number().int(),
+          revision_id: z.number().int(),
+          audit_id: z.number().int(),
+          updated_fields: z.array(z.string()),
+          fields: z.record(z.string(), z.any()),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+      },
+      async ({ preview_token: previewToken, confirmed }) => {
+        try {
+          const result = await drupalWriteClient.post('/api/v1/content/commit', {
+            preview_token: previewToken,
+            confirmed,
+          });
+          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+        catch (error) {
+          return toolError('Could not commit training update.', error, audit);
+        }
+      },
+    );
+  }
 
   server.registerTool(
     'get_content_revisions',

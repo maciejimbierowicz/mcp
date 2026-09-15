@@ -1,7 +1,7 @@
 # 4GROW Marketing Data MCP
 
-Thin, standalone MCP adapter. It exposes six read-only tools backed by the
-Drupal Content API:
+Thin, standalone MCP adapter. It exposes six read tools backed by the Drupal
+Content API:
 
 - `list_content_types`,
 - `get_content_type_schema`,
@@ -9,6 +9,16 @@ Drupal Content API:
 - `get_content_revisions`,
 - `get_content_revision`,
 - `search_content`.
+
+When `MCP_WRITE_ENABLED=true`, it additionally exposes two restricted tools:
+
+- `preview_training_update`,
+- `commit_training_update`.
+
+WRITE is limited to `title`, `meta_title`, and `meta_description` on
+`npxtraining`. Preview never saves. Commit accepts only the one-time preview
+token and explicit confirmation; Drupal remains the authoritative permission,
+allowlist, revision-locking, and audit layer.
 
 The Drupal allowlist currently exposes `npxtraining`, `landing_page` and
 `npxquiz`. Quiz structure is read with `expand` on `field_questions` and
@@ -68,6 +78,11 @@ The MCP endpoint uses stateless Streamable HTTP at
 
 In MCP Inspector, use Streamable HTTP, the `/mcp` URL, and the same Bearer
 header.
+
+WRITE is disabled by default. To enable it for testing, set
+`MCP_WRITE_ENABLED=true` and provide `DRUPAL_WRITE_USERNAME` and
+`DRUPAL_WRITE_PASSWORD` for a separate minimal Drupal account. Never reuse the
+READ account or grant the WRITE account administrative permissions.
 
 ## Local smoke test
 
@@ -182,6 +197,8 @@ release automatically.
 
 `.env` is never part of a release. Each release symlinks it from the shared
 directory, so credentials and `DRUPAL_TIMEOUT_MS` survive deploys untouched.
+Keep `MCP_WRITE_ENABLED=false` until the Drupal WRITE account, permission,
+audit table, and test content are ready.
 
 ## Tunnel / ChatGPT
 
