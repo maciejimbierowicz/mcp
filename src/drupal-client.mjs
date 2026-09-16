@@ -23,11 +23,12 @@ export function parseTimeoutMs(value, fallback = DEFAULT_TIMEOUT_MS) {
 }
 
 export class DrupalApiError extends Error {
-  constructor(message, status = null, code = null) {
+  constructor(message, status = null, code = null, retryAfter = null) {
     super(message);
     this.name = 'DrupalApiError';
     this.status = status;
     this.code = code;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -96,12 +97,14 @@ export class DrupalClient {
     if (!response.ok) {
       const apiMessage = payload?.error?.message;
       const apiCode = payload?.error?.code;
+      const apiRetryAfter = payload?.error?.retry_after;
       throw new DrupalApiError(
         typeof apiMessage === 'string'
           ? apiMessage
           : `Drupal API returned HTTP ${response.status}.`,
         response.status,
         typeof apiCode === 'string' ? apiCode : null,
+        Number.isInteger(apiRetryAfter) ? apiRetryAfter : null,
       );
     }
 

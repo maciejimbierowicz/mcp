@@ -25,6 +25,8 @@ for (const token of [
   'partial',
   'untrusted',
   'Never write',
+  'preview_content_update',
+  'commit_content_update',
 ]) {
   assert(firstChunk.includes(token), `The first 512 characters must mention "${token}".`);
 }
@@ -40,7 +42,12 @@ for (const token of [
   'stored Metatag overrides',
   'has_more',
   'response_too_large',
+  'rate_limited',
   'does not install a ChatGPT Skill',
+  'explicit confirmation',
+  'preview_content_bulk_update',
+  'commit_content_bulk_update',
+  'get_content_write_audit',
 ]) {
   assert(SERVER_INSTRUCTIONS.includes(token), `Server instructions must mention "${token}".`);
 }

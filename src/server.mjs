@@ -23,6 +23,15 @@ const drupalClient = new DrupalClient({
   timeoutMs: config.drupalTimeoutMs,
   maxResponseBytes: config.maxResponseBytes,
 });
+const drupalWriteClient = config.writeEnabled
+  ? new DrupalClient({
+    baseUrl: config.drupalBaseUrl,
+    username: config.drupalWriteUsername,
+    password: config.drupalWritePassword,
+    timeoutMs: config.drupalTimeoutMs,
+    maxResponseBytes: config.maxResponseBytes,
+  })
+  : null;
 
 const mcpRateLimiter = createTokenBucket({
   capacity: config.rateBurst,
@@ -71,6 +80,9 @@ function toolError(summary, error, audit) {
     else if (error.status) {
       code = `http_${error.status}`;
     }
+    if (Number.isInteger(error.retryAfter)) {
+      parts.push(`Retry after ${error.retryAfter} seconds.`);
+    }
     if (error.status) {
       parts.push(`HTTP ${error.status}.`);
     }
@@ -83,6 +95,29 @@ function toolError(summary, error, audit) {
   return {
     isError: true,
     content: [{ type: 'text', text: parts.join(' ') }],
+  };
+}
+
+function controlledWriteError(summary, error, audit) {
+  if (!(error instanceof DrupalApiError) || error.code !== 'rate_limited') {
+    return toolError(summary, error, audit);
+  }
+
+  if (audit) {
+    audit.code = 'rate_limited';
+  }
+  const result = {
+    status: 'blocked',
+    result: null,
+    error: {
+      code: 'rate_limited',
+      message: error.message,
+      retry_after: Number.isInteger(error.retryAfter) ? error.retryAfter : null,
+    },
+  };
+  return {
+    structuredContent: result,
+    content: [{ type: 'text', text: JSON.stringify(result) }],
   };
 }
 
@@ -256,6 +291,236 @@ function createServer(audit = null) {
       }
       catch (error) {
         return toolError('Could not read Drupal content.', error, audit);
+      }
+    },
+  );
+
+  if (drupalWriteClient) {
+    server.registerTool(
+      'preview_content_update',
+      {
+        title: 'Preview content update',
+        description:
+          'Creates a non-persistent preview for an allowed content update. Supported types are npxtraining, landing_page and npxquiz; only title, meta_title and meta_description are allowed. Always show the returned changes and ask for explicit confirmation before calling commit_content_update.',
+        inputSchema: {
+          nid: z.number().int().positive(),
+          expected_revision_id: z.number().int().positive(),
+          updates: z.object({
+            title: z.string().min(1).max(255).optional(),
+            meta_title: z.string().max(255).nullable().optional(),
+            meta_description: z.string().max(320).nullable().optional(),
+          }).refine((value) => Object.keys(value).length > 0, 'At least one update is required.'),
+        },
+        outputSchema: {
+          nid: z.number().int(),
+          content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
+          current_revision_id: z.number().int(),
+          changes: z.array(z.record(z.string(), z.any())),
+          unchanged: z.array(z.string()),
+          preview_token: z.string(),
+          expires_at: z.string(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      async (input) => {
+        try {
+          const result = await drupalWriteClient.post(`/api/v1/content/${input.nid}/preview`, {
+            nid: input.nid,
+            expected_revision_id: input.expected_revision_id,
+            updates: input.updates,
+          });
+          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+        catch (error) {
+          return toolError('Could not preview content update.', error, audit);
+        }
+      },
+    );
+
+    server.registerTool(
+      'preview_content_bulk_update',
+      {
+        title: 'Preview bulk content update',
+        description:
+          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Supported types are npxtraining, landing_page and npxquiz; only title, meta_title and meta_description are allowed. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
+        inputSchema: {
+          items: z.array(z.object({
+            nid: z.number().int().positive(),
+            expected_revision_id: z.number().int().positive(),
+            updates: z.object({
+              title: z.string().min(1).max(255).optional(),
+              meta_title: z.string().max(255).nullable().optional(),
+              meta_description: z.string().max(320).nullable().optional(),
+            }).refine((value) => Object.keys(value).length > 0, 'At least one update is required.'),
+          })).min(1).max(10).refine(
+            (items) => new Set(items.map((item) => item.nid)).size === items.length,
+            'Every nid must be unique.',
+          ),
+        },
+        outputSchema: {
+          content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
+          item_count: z.number().int().min(1).max(10),
+          items: z.array(z.object({
+            nid: z.number().int(),
+            content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
+            current_revision_id: z.number().int(),
+            changes: z.array(z.record(z.string(), z.any())),
+            unchanged: z.array(z.string()),
+          })),
+          preview_token: z.string(),
+          expires_at: z.string(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      async ({ items }) => {
+        try {
+          const result = await drupalWriteClient.post('/api/v1/content/bulk/preview', { items });
+          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+        catch (error) {
+          return toolError('Could not preview bulk content update.', error, audit);
+        }
+      },
+    );
+
+    server.registerTool(
+      'commit_content_bulk_update',
+      {
+        title: 'Commit confirmed bulk content update',
+        description:
+          'Atomically commits exactly the complete same-type batch represented by one bulk preview token. Call only after the user explicitly confirms the displayed batch. Never accept or invent update values here.',
+        inputSchema: {
+          preview_token: z.string().regex(/^[a-f0-9]{64}$/),
+          confirmed: z.literal(true),
+        },
+        outputSchema: {
+          status: z.enum(['committed', 'blocked']),
+          result: z.object({
+            item_count: z.number().int().min(1).max(10),
+            items: z.array(z.object({
+              nid: z.number().int(),
+              revision_id: z.number().int(),
+              audit_id: z.number().int(),
+              updated_fields: z.array(z.string()),
+              fields: z.record(z.string(), z.any()),
+            })),
+          }).nullable(),
+          error: z.object({
+            code: z.literal('rate_limited'),
+            message: z.string(),
+            retry_after: z.number().int().positive().nullable(),
+          }).nullable(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+      },
+      async ({ preview_token: previewToken, confirmed }) => {
+        try {
+          const result = await drupalWriteClient.post('/api/v1/content/bulk/commit', {
+            preview_token: previewToken,
+            confirmed,
+          });
+          const output = { status: 'committed', result, error: null };
+          return {
+            structuredContent: output,
+            content: [{ type: 'text', text: JSON.stringify(output) }],
+          };
+        }
+        catch (error) {
+          return controlledWriteError('Could not commit bulk content update.', error, audit);
+        }
+      },
+    );
+
+    server.registerTool(
+      'commit_content_update',
+      {
+        title: 'Commit confirmed content update',
+        description:
+          'Commits exactly the changes from a content preview token. Call only after the user explicitly confirms the displayed preview. Never accept or invent update values here.',
+        inputSchema: {
+          preview_token: z.string().regex(/^[a-f0-9]{64}$/),
+          confirmed: z.literal(true),
+        },
+        outputSchema: {
+          status: z.enum(['committed', 'blocked']),
+          result: z.object({
+            nid: z.number().int(),
+            revision_id: z.number().int(),
+            audit_id: z.number().int(),
+            updated_fields: z.array(z.string()),
+            fields: z.record(z.string(), z.any()),
+          }).nullable(),
+          error: z.object({
+            code: z.literal('rate_limited'),
+            message: z.string(),
+            retry_after: z.number().int().positive().nullable(),
+          }).nullable(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+      },
+      async ({ preview_token: previewToken, confirmed }) => {
+        try {
+          const result = await drupalWriteClient.post('/api/v1/content/commit', {
+            preview_token: previewToken,
+            confirmed,
+          });
+          const output = { status: 'committed', result, error: null };
+          return {
+            structuredContent: output,
+            content: [{ type: 'text', text: JSON.stringify(output) }],
+          };
+        }
+        catch (error) {
+          return controlledWriteError('Could not commit content update.', error, audit);
+        }
+      },
+    );
+  }
+
+  server.registerTool(
+    'get_content_write_audit',
+    {
+      title: 'Get Content API write audit',
+      description:
+        'Use this after a Content API write or when the user asks who changed allowed fields through MCP. Returns the immutable, paginated API audit for one accessible NID. This is separate from the complete Drupal revision history.',
+      inputSchema: {
+        nid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+        limit: z.number().int().min(1).max(100).default(50),
+        after_audit_id: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
+      },
+      outputSchema: {
+        nid: z.number().int(),
+        items: z.array(z.object({
+          audit_id: z.number().int(),
+          technical_uid: z.number().int(),
+          nid: z.number().int(),
+          old_revision_id: z.number().int(),
+          new_revision_id: z.number().int(),
+          timestamp: z.number().int(),
+          changed_fields: z.array(z.string()),
+          changes: z.array(z.record(z.string(), z.any())),
+        })),
+        has_more: z.boolean(),
+        next_after_audit_id: z.union([z.number().int(), z.null()]),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ nid, limit, after_audit_id: afterAuditId }) => {
+      try {
+        const query = new URLSearchParams({ limit: String(limit) });
+        if (afterAuditId !== undefined) {
+          query.set('after_audit_id', String(afterAuditId));
+        }
+        const path = '/api/v1/content/' + nid + '/write-audit?' + query.toString();
+        const result = await drupalClient.get(path);
+        return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+      }
+      catch (error) {
+        return toolError('Could not read Content API write audit.', error, audit);
       }
     },
   );

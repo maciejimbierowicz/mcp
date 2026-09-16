@@ -51,6 +51,26 @@ function parseBoundedInt(name, value, fallback, min, max) {
   return parsed;
 }
 
+function parseBoolean(name, value, fallback = false) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return fallback;
+  }
+  if (value === 'true') {
+    return true;
+  }
+  if (value === 'false') {
+    return false;
+  }
+  throw new Error(`${name} must be true or false.`);
+}
+
+const writeEnabled = parseBoolean('MCP_WRITE_ENABLED', process.env.MCP_WRITE_ENABLED);
+const drupalWriteUsername = process.env.DRUPAL_WRITE_USERNAME?.trim() ?? '';
+const drupalWritePassword = process.env.DRUPAL_WRITE_PASSWORD?.trim() ?? '';
+if (writeEnabled && (!drupalWriteUsername || !drupalWritePassword)) {
+  throw new Error('DRUPAL_WRITE_USERNAME and DRUPAL_WRITE_PASSWORD are required when MCP_WRITE_ENABLED=true.');
+}
+
 export const config = Object.freeze({
   port: parsePort(process.env.MCP_PORT),
   allowedHosts: parseAllowedHosts(process.env.MCP_ALLOWED_HOSTS),
@@ -58,6 +78,9 @@ export const config = Object.freeze({
   drupalBaseUrl: parseBaseUrl(requiredEnvironmentVariable('DRUPAL_BASE_URL')),
   drupalUsername: requiredEnvironmentVariable('DRUPAL_USERNAME'),
   drupalPassword: requiredEnvironmentVariable('DRUPAL_PASSWORD'),
+  writeEnabled,
+  drupalWriteUsername,
+  drupalWritePassword,
   drupalTimeoutMs: parseTimeoutMs(process.env.DRUPAL_TIMEOUT_MS),
   rateLimitPerMin: parseBoundedInt('MCP_RATE_LIMIT_PER_MIN', process.env.MCP_RATE_LIMIT_PER_MIN, 30, 1, 600),
   rateBurst: parseBoundedInt('MCP_RATE_BURST', process.env.MCP_RATE_BURST, 10, 1, 100),
