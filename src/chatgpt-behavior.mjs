@@ -6,6 +6,6 @@ export const SERVER_INSTRUCTIONS = [
   'Landing page visible H1 is field_top_tytul, not node title. Quiz structure uses expand field_questions and field_questions.field_answers. Scoring, hints, participants and npx_test are never returned.',
   'meta_title, meta_description and canonical are stored Metatag overrides. Null means no override was saved, not that the HTML tag is missing.',
   'Lists from search_content and get_content_revisions are complete only when has_more is false. Continue with the returned cursor. Stopping early is a partial result.',
-  'On error code response_too_large, retry with fewer fields or a lower limit instead of reporting that the data is unavailable. On code busy, wait and retry once. On code rate_limited, do not retry automatically; report the retry delay.',
+  'On error code response_too_large, retry with fewer fields or a lower limit instead of reporting that the data is unavailable. On code busy, wait and retry once. A WRITE result with status blocked and error code rate_limited means nothing was saved: report its exact error code and retry_after, and do not create another preview or retry automatically.',
   'This MCP does not install a ChatGPT Skill and cannot force the model to obey these rules.',
 ].join('\n\n');

@@ -98,6 +98,29 @@ function toolError(summary, error, audit) {
   };
 }
 
+function controlledWriteError(summary, error, audit) {
+  if (!(error instanceof DrupalApiError) || error.code !== 'rate_limited') {
+    return toolError(summary, error, audit);
+  }
+
+  if (audit) {
+    audit.code = 'rate_limited';
+  }
+  const result = {
+    status: 'blocked',
+    result: null,
+    error: {
+      code: 'rate_limited',
+      message: error.message,
+      retry_after: Number.isInteger(error.retryAfter) ? error.retryAfter : null,
+    },
+  };
+  return {
+    structuredContent: result,
+    content: [{ type: 'text', text: JSON.stringify(result) }],
+  };
+}
+
 async function runHeavyTool(summary, audit, fn) {
   let release;
   try {
@@ -371,14 +394,22 @@ function createServer(audit = null) {
           confirmed: z.literal(true),
         },
         outputSchema: {
-          item_count: z.number().int().min(1).max(10),
-          items: z.array(z.object({
-            nid: z.number().int(),
-            revision_id: z.number().int(),
-            audit_id: z.number().int(),
-            updated_fields: z.array(z.string()),
-            fields: z.record(z.string(), z.any()),
-          })),
+          status: z.enum(['committed', 'blocked']),
+          result: z.object({
+            item_count: z.number().int().min(1).max(10),
+            items: z.array(z.object({
+              nid: z.number().int(),
+              revision_id: z.number().int(),
+              audit_id: z.number().int(),
+              updated_fields: z.array(z.string()),
+              fields: z.record(z.string(), z.any()),
+            })),
+          }).nullable(),
+          error: z.object({
+            code: z.literal('rate_limited'),
+            message: z.string(),
+            retry_after: z.number().int().positive().nullable(),
+          }).nullable(),
         },
         annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
       },
@@ -388,10 +419,14 @@ function createServer(audit = null) {
             preview_token: previewToken,
             confirmed,
           });
-          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+          const output = { status: 'committed', result, error: null };
+          return {
+            structuredContent: output,
+            content: [{ type: 'text', text: JSON.stringify(output) }],
+          };
         }
         catch (error) {
-          return toolError('Could not commit bulk content update.', error, audit);
+          return controlledWriteError('Could not commit bulk content update.', error, audit);
         }
       },
     );
@@ -407,11 +442,19 @@ function createServer(audit = null) {
           confirmed: z.literal(true),
         },
         outputSchema: {
-          nid: z.number().int(),
-          revision_id: z.number().int(),
-          audit_id: z.number().int(),
-          updated_fields: z.array(z.string()),
-          fields: z.record(z.string(), z.any()),
+          status: z.enum(['committed', 'blocked']),
+          result: z.object({
+            nid: z.number().int(),
+            revision_id: z.number().int(),
+            audit_id: z.number().int(),
+            updated_fields: z.array(z.string()),
+            fields: z.record(z.string(), z.any()),
+          }).nullable(),
+          error: z.object({
+            code: z.literal('rate_limited'),
+            message: z.string(),
+            retry_after: z.number().int().positive().nullable(),
+          }).nullable(),
         },
         annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
       },
@@ -421,10 +464,14 @@ function createServer(audit = null) {
             preview_token: previewToken,
             confirmed,
           });
-          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+          const output = { status: 'committed', result, error: null };
+          return {
+            structuredContent: output,
+            content: [{ type: 'text', text: JSON.stringify(output) }],
+          };
         }
         catch (error) {
-          return toolError('Could not commit content update.', error, audit);
+          return controlledWriteError('Could not commit content update.', error, audit);
         }
       },
     );
