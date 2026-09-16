@@ -1,6 +1,6 @@
 # 4GROW Marketing Data MCP
 
-Thin, standalone MCP adapter. It exposes six read tools backed by the Drupal
+Thin, standalone MCP adapter. It exposes seven read tools backed by the Drupal
 Content API:
 
 - `list_content_types`,
@@ -8,15 +8,18 @@ Content API:
 - `get_content`,
 - `get_content_revisions`,
 - `get_content_revision`,
-- `search_content`.
+- `search_content`,
+- `get_content_write_audit`.
 
-When `MCP_WRITE_ENABLED=true`, it additionally exposes two restricted tools:
+When `MCP_WRITE_ENABLED=true`, it additionally exposes four restricted tools:
 
-- `preview_training_update`,
-- `commit_training_update`.
+- `preview_content_update`,
+- `commit_content_update`,
+- `preview_content_bulk_update`,
+- `commit_content_bulk_update`.
 
 WRITE is limited to `title`, `meta_title`, and `meta_description` on
-`npxtraining`. Preview never saves. Commit accepts only the one-time preview
+`npxtraining`, `landing_page`, and `npxquiz`. Preview never saves. Commit accepts only the one-time preview
 token and explicit confirmation; Drupal remains the authoritative permission,
 allowlist, revision-locking, and audit layer.
 
@@ -26,11 +29,11 @@ The Drupal allowlist currently exposes `npxtraining`, `landing_page` and
 participant records, and `npx_test` entities are omitted. Expanding a quiz
 does not solve it and does not load attempt results.
 
-The Drupal envelope and the six tool payloads are documented in the Drupal
+The Drupal envelope and the six core READ tool payloads are documented in the Drupal
 repo file `instrukcje-zadan/drupal-chat-integration/GROW-1049_READ_API_CONTRACT.md`.
 Success is `{ data }`. Failures are `{ error: { status, code, message } }`.
 `code` is one of `not_found`, `unknown_field`, `unsupported_type`,
-`access_denied`, `invalid_request`, `response_too_large`, `busy`, or
+`access_denied`, `invalid_request`, `response_too_large`, `rate_limited`, `busy`, or
 `timeout` (MCP-only, when Drupal does not answer in time). Tool errors include that `code` in the text.
 On `response_too_large`, retry with fewer fields or a lower limit. On `busy`,
 wait and retry once.
@@ -83,6 +86,24 @@ WRITE is disabled by default. To enable it for testing, set
 `MCP_WRITE_ENABLED=true` and provide `DRUPAL_WRITE_USERNAME` and
 `DRUPAL_WRITE_PASSWORD` for a separate minimal Drupal account. Never reuse the
 READ account or grant the WRITE account administrative permissions.
+
+Single updates use `preview_content_update` and
+`commit_content_update`. Batches of 1-10 unique items of one allowed content type use
+`preview_content_bulk_update` and `commit_content_bulk_update`. A bulk
+commit revalidates the complete preview and writes every item or none;
+every item receives its own Drupal revision and audit record.
+Drupal also limits one field of one NID to one successful WRITE per minute and
+the technical WRITE account to 10 changed content items per minute. Bulk counts
+each item. A rejected commit returns `rate_limited` and a retry delay.
+
+`get_content_write_audit` returns the separate MCP WRITE audit trail for a node.
+Full Drupal content history remains available through the revision tools.
+
+For an opt-in integration test against disposable content copies, configure
+`TEST_WRITE_CONTENT_NIDS`, `TEST_WRITE_BULK_NIDS`, and explicitly set
+`TEST_WRITE_CONFIRM=true`, then run `npm run test:write`.
+The script intentionally leaves unique marker values on those disposable copies;
+wait one minute before running it again with the same NIDs.
 
 ## Local smoke test
 
@@ -236,10 +257,10 @@ that HTML tags are missing.
 - Drupal credentials are read from environment variables and never returned
   in MCP tool results.
 - The inbound MCP token is a single application key, not a human identity.
-  Whoever holds it can call every read tool. Keep it on the approved ChatGPT
+  Whoever holds it can call every tool enabled on that MCP server. Keep it on the approved ChatGPT
   connector only. Drupal Basic auth is a separate service account.
-- The tool is annotated as read-only and non-destructive. There are six tools
-  and none of them write.
+- Seven READ tools are annotated as read-only and non-destructive. Four WRITE
+  tools are exposed only when `MCP_WRITE_ENABLED=true` and are marked as writes.
 - Drupal independently enforces its bundle allowlist, entity access, role, and
   permission.
 - Drupal content returned by tools is untrusted data, not model instructions.

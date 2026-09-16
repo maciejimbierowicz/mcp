@@ -80,6 +80,9 @@ function toolError(summary, error, audit) {
     else if (error.status) {
       code = `http_${error.status}`;
     }
+    if (Number.isInteger(error.retryAfter)) {
+      parts.push(`Retry after ${error.retryAfter} seconds.`);
+    }
     if (error.status) {
       parts.push(`HTTP ${error.status}.`);
     }
@@ -271,11 +274,11 @@ function createServer(audit = null) {
 
   if (drupalWriteClient) {
     server.registerTool(
-      'preview_training_update',
+      'preview_content_update',
       {
-        title: 'Preview training update',
+        title: 'Preview content update',
         description:
-          'Creates a non-persistent preview for an npxtraining update. Only title, meta_title and meta_description are allowed. Always show the returned changes and ask for explicit confirmation before calling commit_training_update.',
+          'Creates a non-persistent preview for an allowed content update. Supported types are npxtraining, landing_page and npxquiz; only title, meta_title and meta_description are allowed. Always show the returned changes and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
           nid: z.number().int().positive(),
           expected_revision_id: z.number().int().positive(),
@@ -287,7 +290,7 @@ function createServer(audit = null) {
         },
         outputSchema: {
           nid: z.number().int(),
-          content_type: z.literal('npxtraining'),
+          content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
           current_revision_id: z.number().int(),
           changes: z.array(z.record(z.string(), z.any())),
           unchanged: z.array(z.string()),
@@ -306,17 +309,17 @@ function createServer(audit = null) {
           return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
         }
         catch (error) {
-          return toolError('Could not preview training update.', error, audit);
+          return toolError('Could not preview content update.', error, audit);
         }
       },
     );
 
     server.registerTool(
-      'preview_training_bulk_update',
+      'preview_content_bulk_update',
       {
-        title: 'Preview bulk training update',
+        title: 'Preview bulk content update',
         description:
-          'Creates one non-persistent preview for 1-10 npxtraining updates after search_content. Use the current revision ID of every training. Show the complete returned batch and ask once for explicit confirmation. This preview cannot be committed until the separate bulk commit tool is enabled.',
+          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Supported types are npxtraining, landing_page and npxquiz; only title, meta_title and meta_description are allowed. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
         inputSchema: {
           items: z.array(z.object({
             nid: z.number().int().positive(),
@@ -332,11 +335,11 @@ function createServer(audit = null) {
           ),
         },
         outputSchema: {
-          content_type: z.literal('npxtraining'),
+          content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
           item_count: z.number().int().min(1).max(10),
           items: z.array(z.object({
             nid: z.number().int(),
-            content_type: z.literal('npxtraining'),
+            content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
             current_revision_id: z.number().int(),
             changes: z.array(z.record(z.string(), z.any())),
             unchanged: z.array(z.string()),
@@ -352,17 +355,53 @@ function createServer(audit = null) {
           return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
         }
         catch (error) {
-          return toolError('Could not preview bulk training update.', error, audit);
+          return toolError('Could not preview bulk content update.', error, audit);
         }
       },
     );
 
     server.registerTool(
-      'commit_training_update',
+      'commit_content_bulk_update',
       {
-        title: 'Commit confirmed training update',
+        title: 'Commit confirmed bulk content update',
         description:
-          'Commits exactly the changes from a preview token. Call only after the user explicitly confirms the displayed preview. Never accept or invent update values here.',
+          'Atomically commits exactly the complete same-type batch represented by one bulk preview token. Call only after the user explicitly confirms the displayed batch. Never accept or invent update values here.',
+        inputSchema: {
+          preview_token: z.string().regex(/^[a-f0-9]{64}$/),
+          confirmed: z.literal(true),
+        },
+        outputSchema: {
+          item_count: z.number().int().min(1).max(10),
+          items: z.array(z.object({
+            nid: z.number().int(),
+            revision_id: z.number().int(),
+            audit_id: z.number().int(),
+            updated_fields: z.array(z.string()),
+            fields: z.record(z.string(), z.any()),
+          })),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+      },
+      async ({ preview_token: previewToken, confirmed }) => {
+        try {
+          const result = await drupalWriteClient.post('/api/v1/content/bulk/commit', {
+            preview_token: previewToken,
+            confirmed,
+          });
+          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+        catch (error) {
+          return toolError('Could not commit bulk content update.', error, audit);
+        }
+      },
+    );
+
+    server.registerTool(
+      'commit_content_update',
+      {
+        title: 'Commit confirmed content update',
+        description:
+          'Commits exactly the changes from a content preview token. Call only after the user explicitly confirms the displayed preview. Never accept or invent update values here.',
         inputSchema: {
           preview_token: z.string().regex(/^[a-f0-9]{64}$/),
           confirmed: z.literal(true),
@@ -385,11 +424,59 @@ function createServer(audit = null) {
           return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
         }
         catch (error) {
-          return toolError('Could not commit training update.', error, audit);
+          return toolError('Could not commit content update.', error, audit);
         }
       },
     );
   }
+
+  server.registerTool(
+    'get_content_write_audit',
+    {
+      title: 'Get Content API write audit',
+      description:
+        'Use this after a Content API write or when the user asks who changed allowed fields through MCP. Returns the immutable, paginated API audit for one accessible NID. This is separate from the complete Drupal revision history.',
+      inputSchema: {
+        nid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+        limit: z.number().int().min(1).max(100).default(50),
+        after_audit_id: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
+      },
+      outputSchema: {
+        nid: z.number().int(),
+        items: z.array(z.object({
+          audit_id: z.number().int(),
+          technical_uid: z.number().int(),
+          nid: z.number().int(),
+          old_revision_id: z.number().int(),
+          new_revision_id: z.number().int(),
+          timestamp: z.number().int(),
+          changed_fields: z.array(z.string()),
+          changes: z.array(z.record(z.string(), z.any())),
+        })),
+        has_more: z.boolean(),
+        next_after_audit_id: z.union([z.number().int(), z.null()]),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ nid, limit, after_audit_id: afterAuditId }) => {
+      try {
+        const query = new URLSearchParams({ limit: String(limit) });
+        if (afterAuditId !== undefined) {
+          query.set('after_audit_id', String(afterAuditId));
+        }
+        const path = '/api/v1/content/' + nid + '/write-audit?' + query.toString();
+        const result = await drupalClient.get(path);
+        return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+      }
+      catch (error) {
+        return toolError('Could not read Content API write audit.', error, audit);
+      }
+    },
+  );
 
   server.registerTool(
     'get_content_revisions',
