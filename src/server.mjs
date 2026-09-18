@@ -172,11 +172,27 @@ const trainingMultiTextWriteFields = [
 const entityReferenceSchema = z.object({
   target_id: z.number().int().positive(),
 }).strict();
-const imageReferenceSchema = z.object({
-  target_id: z.number().int().positive(),
+const uploadTokenSchema = z.string().regex(/^[a-f0-9]{64}$/);
+const imageMetadataShape = {
   alt: z.string().max(512),
   title: z.string().max(1024).nullable().optional(),
-}).strict();
+};
+const imageReferenceSchema = z.union([
+  z.object({ target_id: z.number().int().positive(), ...imageMetadataShape }).strict(),
+  z.object({ upload_token: uploadTokenSchema, ...imageMetadataShape }).strict(),
+]);
+const fileReferenceSchema = z.union([
+  z.object({
+    target_id: z.number().int().positive(),
+    description: z.string().max(1024).nullable().optional(),
+    display: z.boolean().optional(),
+  }).strict(),
+  z.object({
+    upload_token: uploadTokenSchema,
+    description: z.string().max(1024).nullable().optional(),
+    display: z.boolean().optional(),
+  }).strict(),
+]);
 const revisionReferenceSchema = z.object({
   target_id: z.number().int().positive(),
   target_revision_id: z.number().int().positive(),
@@ -271,6 +287,7 @@ const trainingWriteShape = {
     field,
     imageReferenceSchema.nullable().optional(),
   ])),
+  field_program_szkolenia: z.array(fileReferenceSchema).max(2).nullable().optional(),
   ...Object.fromEntries(trainingSingleParagraphReferenceWriteFields.map((field) => [
     field,
     entityReferenceSchema.nullable().optional(),
@@ -527,6 +544,88 @@ function createServer(audit = null) {
   );
 
   if (drupalWriteClient) {
+    server.registerTool(
+      'create_content_upload',
+      {
+        title: 'Create secure content upload',
+        description:
+          'Creates a 10-minute browser upload link bound to one exact content revision and image/file destination. Give upload_url to the user, then use get_content_upload_status before previewing a content update with upload_token.',
+        inputSchema: {
+          nid: z.number().int().positive(),
+          expected_revision_id: z.number().int().positive(),
+          destination: z.union([
+            z.object({
+              scope: z.literal('content'),
+              field: z.string().regex(/^field_[a-z0-9_]+$/),
+            }).strict(),
+            z.object({
+              scope: z.literal('paragraph'),
+              bundle: z.string().min(1).max(128),
+              field: z.string().regex(/^field_[a-z0-9_]+$/),
+            }).strict(),
+          ]),
+        },
+        outputSchema: {
+          upload_token: uploadTokenSchema,
+          status: z.literal('pending'),
+          destination: z.record(z.string(), z.string()),
+          allowed_extensions: z.array(z.string()),
+          max_bytes: z.number().int().positive(),
+          expires_at: z.string(),
+          upload_url: z.string().url(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      async ({ nid, expected_revision_id: expectedRevisionId, destination }) => {
+        try {
+          const result = await drupalWriteClient.post(`/api/v1/content/${nid}/uploads`, {
+            nid,
+            expected_revision_id: expectedRevisionId,
+            destination,
+          });
+          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+        catch (error) {
+          return toolError('Could not create content upload.', error, audit);
+        }
+      },
+    );
+
+    server.registerTool(
+      'get_content_upload_status',
+      {
+        title: 'Get secure content upload status',
+        description:
+          'Checks whether the user completed a previously created browser upload. Do not preview the content change until status is uploaded.',
+        inputSchema: {
+          upload_token: uploadTokenSchema,
+        },
+        outputSchema: {
+          upload_token: uploadTokenSchema,
+          status: z.enum(['pending', 'uploaded']),
+          destination: z.record(z.string(), z.string()),
+          file: z.object({
+            target_id: z.number().int().positive(),
+            filename: z.string(),
+            mime_type: z.string(),
+            size: z.number().int().positive(),
+          }).nullable(),
+        },
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+      },
+      async ({ upload_token: uploadToken }) => {
+        try {
+          const result = await drupalWriteClient.get(
+            `/api/v1/content/uploads/${uploadToken}/status`,
+          );
+          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+        catch (error) {
+          return toolError('Could not read content upload status.', error, audit);
+        }
+      },
+    );
+
     server.registerTool(
       'preview_content_update',
       {
