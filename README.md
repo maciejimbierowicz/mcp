@@ -27,9 +27,11 @@ taxonomy terms, and reusable blocks through strict `target_id` objects.
 Four training image fields can reference existing permanent image files with
 validated `alt` and optional `title` metadata. Fourteen paragraph fields can
 reference existing paragraphs; revision-aware fields require both `target_id`
-and `target_revision_id`. Creating or editing nested paragraphs, new file
-uploads, non-image files, publication state, and technical integration
-identifiers remain excluded. Preview never saves. Commit accepts
+and `target_revision_id`. Existing embedded paragraphs may include `bundle` and
+a non-empty `fields` object to edit nested values. New embedded paragraphs use
+`bundle` and `fields` without IDs. New file uploads, non-image files, publication
+state, and technical integration identifiers remain excluded. Preview never
+saves. Commit accepts
 only the one-time preview token and explicit confirmation; Drupal remains the
 authoritative permission, type validation, target validation, allowlist,
 revision-locking, and audit layer.

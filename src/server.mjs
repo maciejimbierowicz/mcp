@@ -181,6 +181,27 @@ const revisionReferenceSchema = z.object({
   target_id: z.number().int().positive(),
   target_revision_id: z.number().int().positive(),
 }).strict();
+const paragraphFieldRecordSchema = z.record(
+  z.string().regex(/^field_[a-z0-9_]+$/),
+  z.unknown(),
+).refine((value) => Object.keys(value).length <= 50, 'Paragraph fields cannot exceed 50 entries.');
+const paragraphFieldsSchema = paragraphFieldRecordSchema.refine(
+  (value) => Object.keys(value).length > 0,
+  'Paragraph fields cannot be empty.',
+);
+const paragraphWriteItemSchema = z.union([
+  revisionReferenceSchema,
+  z.object({
+    target_id: z.number().int().positive(),
+    target_revision_id: z.number().int().positive(),
+    bundle: z.string().min(1).max(128),
+    fields: paragraphFieldsSchema,
+  }).strict(),
+  z.object({
+    bundle: z.string().min(1).max(128),
+    fields: paragraphFieldRecordSchema,
+  }).strict(),
+]);
 const trainingSingleReferenceWriteFields = [
   'field_kategoria_followup',
   'field_npxtrainer_block_ref_',
@@ -260,11 +281,11 @@ const trainingWriteShape = {
   ])),
   ...Object.fromEntries(trainingSingleParagraphRevisionWriteFields.map((field) => [
     field,
-    revisionReferenceSchema.nullable().optional(),
+    paragraphWriteItemSchema.nullable().optional(),
   ])),
   ...Object.fromEntries(trainingMultiParagraphRevisionWriteFields.map((field) => [
     field,
-    z.array(revisionReferenceSchema).nullable().optional(),
+    z.array(paragraphWriteItemSchema).max(50).nullable().optional(),
   ])),
   field_hide_benefits: z.array(z.enum(['1', '2', '3', '4', '5'])).nullable().optional(),
   field_npxtraining_min_guaranted: z.enum(['0', '1', '2', '3', '4', '5', '6', '7', '8']).nullable().optional(),
