@@ -169,6 +169,40 @@ const trainingMultiTextWriteFields = [
   'field_npxtraining_references',
   'field_npxtraining_reviews',
 ];
+const entityReferenceSchema = z.object({
+  target_id: z.number().int().positive(),
+}).strict();
+const imageReferenceSchema = z.object({
+  target_id: z.number().int().positive(),
+  alt: z.string().max(512),
+  title: z.string().max(1024).nullable().optional(),
+}).strict();
+const trainingSingleReferenceWriteFields = [
+  'field_kategoria_followup',
+  'field_npxtrainer_block_ref_',
+  'field_npxtrainer_block_ref_8_cec',
+  'field_npxtrainer_block_ref_rev_r',
+  'field_npxtraining_category',
+  'field_npxtraining_methods',
+];
+const trainingMultiReferenceWriteFields = [
+  'field_blog_posts',
+  'field_kategoria',
+  'field_npxtraining_dates',
+  'field_npx_more_related_training',
+  'field_npx_related_training',
+  'field_oni_juz_byli',
+  'field_opinie_wideo_ref',
+  'field_referencje_i_opinie',
+  'field_tagi',
+  'field_training_languages',
+];
+const trainingImageWriteFields = [
+  'field_miniaturka',
+  'field_seo_image',
+  'field_npxtraining_block_img',
+  'field_zaslepka',
+];
 const trainingWriteShape = {
   ...Object.fromEntries(trainingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
   ...Object.fromEntries(trainingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
@@ -177,6 +211,18 @@ const trainingWriteShape = {
   ...Object.fromEntries(trainingMultiTextWriteFields.map((field) => [
     field,
     z.array(z.string()).nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingSingleReferenceWriteFields.map((field) => [
+    field,
+    entityReferenceSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingMultiReferenceWriteFields.map((field) => [
+    field,
+    z.array(entityReferenceSchema).nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingImageWriteFields.map((field) => [
+    field,
+    imageReferenceSchema.nullable().optional(),
   ])),
   field_hide_benefits: z.array(z.enum(['1', '2', '3', '4', '5'])).nullable().optional(),
   field_npxtraining_min_guaranted: z.enum(['0', '1', '2', '3', '4', '5', '6', '7', '8']).nullable().optional(),

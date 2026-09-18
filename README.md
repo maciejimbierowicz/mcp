@@ -22,11 +22,15 @@ WRITE supports `title`, `meta_title`, and `meta_description` on
 `npxtraining`, `landing_page`, and `npxquiz`. Training content additionally
 supports the editorial scalar fields declared in the preview tool schema:
 text, formatted text values, booleans, bounded integers, numbers, and simple
-lists. References, paragraphs, files, images, publication state, and technical
+lists. It also supports explicitly allowlisted references to existing nodes,
+taxonomy terms, and reusable blocks through strict `target_id` objects.
+Four training image fields can reference existing permanent image files with
+validated `alt` and optional `title` metadata. Paragraph and revision
+references, new file uploads, non-image files, publication state, and technical
 integration identifiers remain excluded. Preview never saves. Commit accepts
 only the one-time preview token and explicit confirmation; Drupal remains the
-authoritative permission, type validation, allowlist, revision-locking, and
-audit layer.
+authoritative permission, type validation, target validation, allowlist,
+revision-locking, and audit layer.
 
 The Drupal allowlist currently exposes `npxtraining`, `landing_page` and
 `npxquiz`. Quiz structure is read with `expand` on `field_questions` and
