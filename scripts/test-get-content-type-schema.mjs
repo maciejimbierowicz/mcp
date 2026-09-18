@@ -37,7 +37,6 @@ try {
     label: schema?.label,
     revisions_enabled: schema?.revisions_enabled,
     translatable: schema?.translatable,
-    read_profiles: schema?.read_profiles,
     field_count: Array.isArray(schema?.fields) ? schema.fields.length : null,
     contains_meta_title: schema?.fields?.some((field) => field.machine_name === 'meta_title'),
     contains_meta_description: schema?.fields?.some(

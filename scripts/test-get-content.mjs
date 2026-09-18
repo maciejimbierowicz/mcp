@@ -16,11 +16,6 @@ if (!Number.isInteger(nid) || nid <= 0) {
   throw new Error('TEST_CONTENT_NID must be a positive integer.');
 }
 
-const profile = process.env.TEST_CONTENT_PROFILE?.trim();
-if (profile && profile !== 'training_editorial') {
-  throw new Error('TEST_CONTENT_PROFILE must be training_editorial when set.');
-}
-
 const transport = new StreamableHTTPClientTransport(
   new URL('http://127.0.0.1:3000/mcp'),
   {
@@ -38,9 +33,7 @@ try {
     name: 'get_content',
     arguments: {
       nid,
-      ...(profile
-        ? { profile }
-        : { fields: ['title', 'meta_title', 'meta_description'] }),
+      fields: ['title', 'meta_title', 'meta_description'],
     },
   });
 
@@ -51,7 +44,6 @@ try {
     revision_id: content?.revision_id,
     language: content?.language,
     returned_fields: content?.fields ? Object.keys(content.fields) : [],
-    profile: profile || null,
     is_error: result.isError === true,
   }, null, 2));
 }

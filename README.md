@@ -29,14 +29,6 @@ The Drupal allowlist currently exposes `npxtraining`, `landing_page` and
 participant records, and `npx_test` entities are omitted. Expanding a quiz
 does not solve it and does not load attempt results.
 
-For a complete, bounded editorial read of one training, call `get_content`
-with `profile: "training_editorial"`. This profile selects the important
-training, offer, SEO, program, trainer, schedule, FAQ and media fields; expands
-only approved nested entities; and normalizes file/image assets to public
-metadata and URLs. `profile` cannot be combined with `fields` or `expand`.
-Available profile names are also returned by `get_content_type_schema` in
-`read_profiles`.
-
 The Drupal envelope and the six core READ tool payloads are documented in the Drupal
 repo file `instrukcje-zadan/drupal-chat-integration/GROW-1049_READ_API_CONTRACT.md`.
 Success is `{ data }`. Failures are `{ error: { status, code, message } }`.
@@ -119,10 +111,6 @@ With the server running in another terminal, run `npm run test:list`.
 The dynamic schema can be checked with `npm run test:schema`.
 Selected fields of a local training node can be checked with
 `npm run test:content`. Override its default node ID with `TEST_CONTENT_NID`.
-Set `TEST_CONTENT_PROFILE=training_editorial` to exercise the complete training
-profile instead of the three-field smoke request.
-With the server running, `npm run test:training-profile-tool` verifies that the
-MCP tool contract advertises this profile to clients.
 
 ## Reading revision history
 
