@@ -212,6 +212,7 @@ function createServer(audit = null) {
         label: z.string(),
         revisions_enabled: z.boolean(),
         translatable: z.boolean(),
+        read_profiles: z.array(z.string()),
         fields: z.array(schemaFieldOutput),
       },
       annotations: {
@@ -247,10 +248,15 @@ function createServer(audit = null) {
     {
       title: 'Get Drupal content',
       description:
-        'Use this when the user has a numeric NID and wants the current fields of one training, landing page or quiz. Optionally request selected field machine names. For a landing page H1 expand field_top_tytul, not title. For quiz questions expand field_questions and field_questions.field_answers. Do not use this for history or to create or edit content. Scoring fields and participant or npx_test entities are never returned.',
-      inputSchema: {
+        'Use this when the user has a numeric NID and wants the current fields of one training, landing page or quiz. For a complete editorial npxtraining read use profile training_editorial; it includes the bounded important fields, safe nested references and normalized assets. Otherwise optionally request selected field machine names. A profile cannot be combined with fields or expand. For a landing page H1 expand field_top_tytul, not title. For quiz questions expand field_questions and field_questions.field_answers. Do not use this for history or to create or edit content. Scoring fields and participant or npx_test entities are never returned.',
+      inputSchema: z.object({
         nid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER)
           .describe('Numeric Drupal node ID.'),
+        profile: z.enum(['training_editorial']).optional()
+          .describe(
+            'Named bounded read profile. Use training_editorial for a complete editorial npxtraining read. '
+            + 'Cannot be combined with fields or expand.',
+          ),
         fields: z.array(z.string().min(1).max(128)).max(50).optional()
           .describe('Optional Drupal or logical field names to return.'),
         expand: z.array(z.string().min(1).max(128)).max(10).optional()
@@ -259,7 +265,14 @@ function createServer(audit = null) {
             + 'For quiz structure use field_questions and field_questions.field_answers. '
             + 'Scoring fields and participant or npx_test entities are never returned.',
           ),
-      },
+      }).refine(
+        ({ profile, fields, expand }) => profile === undefined
+          || (fields === undefined && expand === undefined),
+        {
+          message: 'profile cannot be combined with fields or expand.',
+          path: ['profile'],
+        },
+      ),
       outputSchema: contentOutputSchema,
       annotations: {
         readOnlyHint: true,
@@ -267,9 +280,12 @@ function createServer(audit = null) {
         openWorldHint: false,
       },
     },
-    async ({ nid, fields, expand }) => {
+    async ({ nid, profile, fields, expand }) => {
       try {
         const query = new URLSearchParams();
+        if (profile !== undefined) {
+          query.set('profile', profile);
+        }
         if (fields !== undefined) {
           query.set('fields', fields.join(','));
         }

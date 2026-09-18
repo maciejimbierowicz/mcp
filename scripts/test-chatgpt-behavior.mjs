@@ -48,6 +48,8 @@ for (const token of [
   'preview_content_bulk_update',
   'commit_content_bulk_update',
   'get_content_write_audit',
+  'profile training_editorial',
+  'Do not combine profile with fields or expand',
 ]) {
   assert(SERVER_INSTRUCTIONS.includes(token), `Server instructions must mention "${token}".`);
 }
@@ -55,6 +57,18 @@ for (const token of [
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const serverSource = readFileSync(join(root, 'src/server.mjs'), 'utf8');
 assert(serverSource.includes('SERVER_INSTRUCTIONS'), 'The MCP server must use SERVER_INSTRUCTIONS.');
+assert(
+  serverSource.includes("profile: z.enum(['training_editorial'])"),
+  'get_content must expose the bounded training_editorial profile.',
+);
+assert(
+  serverSource.includes("query.set('profile', profile)"),
+  'get_content must pass the selected profile to Drupal.',
+);
+assert(
+  serverSource.includes('profile cannot be combined with fields or expand.'),
+  'get_content must reject ambiguous profile requests.',
+);
 
 const prompts = readFileSync(join(root, 'prompts/chatgpt-read-regression.md'), 'utf8');
 for (const heading of [
