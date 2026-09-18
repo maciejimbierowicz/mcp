@@ -18,10 +18,15 @@ When `MCP_WRITE_ENABLED=true`, it additionally exposes four restricted tools:
 - `preview_content_bulk_update`,
 - `commit_content_bulk_update`.
 
-WRITE is limited to `title`, `meta_title`, and `meta_description` on
-`npxtraining`, `landing_page`, and `npxquiz`. Preview never saves. Commit accepts only the one-time preview
-token and explicit confirmation; Drupal remains the authoritative permission,
-allowlist, revision-locking, and audit layer.
+WRITE supports `title`, `meta_title`, and `meta_description` on
+`npxtraining`, `landing_page`, and `npxquiz`. Training content additionally
+supports the editorial scalar fields declared in the preview tool schema:
+text, formatted text values, booleans, bounded integers, numbers, and simple
+lists. References, paragraphs, files, images, publication state, and technical
+integration identifiers remain excluded. Preview never saves. Commit accepts
+only the one-time preview token and explicit confirmation; Drupal remains the
+authoritative permission, type validation, allowlist, revision-locking, and
+audit layer.
 
 The Drupal allowlist currently exposes `npxtraining`, `landing_page` and
 `npxquiz`. Quiz structure is read with `expand` on `field_questions` and

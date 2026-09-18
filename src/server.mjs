@@ -69,6 +69,128 @@ const schemaFieldOutput = z.object({
   read_only: z.boolean(),
 });
 
+const trainingTextWriteFields = [
+  'field_blog_after_text',
+  'field_blog_section_title',
+  'field_blog_tekst_nad_artykulami',
+  'field_extra_tekst_g3',
+  'field_extra_tekst_oni_juz_byli',
+  'field_extra_tekst_za_co_nas_',
+  'field_field_tytul_sekcji_g3',
+  'field_link_sekcji_',
+  'field_link_sekcji_argumenty',
+  'field_link_sekcji_dla_kogo',
+  'field_link_sekcji_efekty',
+  'field_link_sekcji_faq',
+  'field_link_sekcji_kontakt',
+  'field_link_sekcji_metodyka',
+  'field_link_sekcji_nasza_jakosc_t',
+  'field_link_sekcji_oni_juz_byli_n',
+  'field_link_sekcji_program_szkole',
+  'field_link_sekcji_szkolenia_onli',
+  'field_link_sekcji_wideo',
+  'field_link_sekcji_wideo_opinie',
+  'field_link_sekcji_wyznaczamy_now',
+  'field_link_sekcji_zapisz_sie',
+  'field_link_sekcji_za_co_nas_uwie',
+  'field_methodology__section_title',
+  'field_nasza_jakosc_twoj_komfort',
+  'field_npxtraining_block_info',
+  'field_npxtraining_cert_title',
+  'field_npxtraining_cetxt',
+  'field_npxtraining_dla_kogo',
+  'field_npxtraining_efekty',
+  'field_npxtraining_knowledge',
+  'field_npxtraining_metodologia',
+  'field_npxtraining_pdftxt',
+  'field_npxtraining_place_txt',
+  'field_npxtraining_program',
+  'field_npxtraining_program_lp',
+  'field_npxtraining_promotion',
+  'field_npxtraining_seo',
+  'field_npxtraining_tytul_formalny',
+  'field_npxtraining_tytul_w_opinii',
+  'field_npxtraining_you_learn',
+  'field_npx_more_rel_tr_txt',
+  'field_npx_sections_hide',
+  'field_npx_sections_order',
+  'field_obszar_tematyczny',
+  'field_opis_sekcji_galeria',
+  'field_opis_sekcji_galeria_dolny',
+  'field_opis_sekcji_program',
+  'field_podtytul',
+  'field_polityka_rabatowa',
+  'field_program_szkolenia_wstep',
+  'field_referencje_naglowek',
+  'field_szkolenia_online_opis',
+  'field_term_table_title',
+  'field_text_after_terms',
+  'field_text_before_terms',
+  'field_tytul_sekcji_faq',
+  'field_tytul_sekcji_g15',
+  'field_tytul_sekcji_g16',
+  'field_tytul_sekcji_g19',
+  'field_tytul_sekcji_g2',
+  'field_tytul_sekcji_g20',
+  'field_tytul_sekcji_g4',
+  'field_tytul_sekcji_g6',
+  'field_tytul_sekcji_g7',
+  'field_tytul_sekcji_g8',
+  'field_tytul_sekcji_g9',
+  'field_tytul_sekcji_galeria',
+  'field_tytul_sekcji_wideo_opinie',
+  'field_video_text',
+  'field_zajawka',
+  'field_zajawka_termin',
+];
+const trainingBooleanWriteFields = [
+  'field_npxtraining_closed',
+  'field_npxtraining_laptop_info',
+  'field_npxtraining_online',
+  'field_npxtraining_pair_only',
+  'field_npxtraining_stationary',
+  'field_npxtraining_webinar',
+  'field_npxt_show_top_quick_info',
+  'field_online_live',
+  'field_seminarium',
+];
+const trainingIntegerWriteFields = [
+  'field_duration_days_count',
+  'field_duration_total_hours',
+  'field_npxtraining_liczba_dni_lp',
+];
+const trainingNumberWriteFields = [
+  'field_npxtraining_discount_fxd',
+  'field_npxtraining_discount_per',
+  'field_npxtraining_price',
+];
+const trainingMultiTextWriteFields = [
+  'field_duration_daily_schedule',
+  'field_npxtraining_references',
+  'field_npxtraining_reviews',
+];
+const trainingWriteShape = {
+  ...Object.fromEntries(trainingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
+  ...Object.fromEntries(trainingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
+  ...Object.fromEntries(trainingIntegerWriteFields.map((field) => [field, z.number().int().nullable().optional()])),
+  ...Object.fromEntries(trainingNumberWriteFields.map((field) => [field, z.number().finite().nullable().optional()])),
+  ...Object.fromEntries(trainingMultiTextWriteFields.map((field) => [
+    field,
+    z.array(z.string()).nullable().optional(),
+  ])),
+  field_hide_benefits: z.array(z.enum(['1', '2', '3', '4', '5'])).nullable().optional(),
+  field_npxtraining_min_guaranted: z.enum(['0', '1', '2', '3', '4', '5', '6', '7', '8']).nullable().optional(),
+};
+const contentUpdatesSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  meta_title: z.string().max(255).nullable().optional(),
+  meta_description: z.string().max(320).nullable().optional(),
+  ...trainingWriteShape,
+}).strict().refine(
+  (value) => Object.keys(value).length > 0,
+  'At least one update is required.',
+);
+
 function toolError(summary, error, audit) {
   const parts = [summary];
   let code = 'internal';
@@ -301,15 +423,11 @@ function createServer(audit = null) {
       {
         title: 'Preview content update',
         description:
-          'Creates a non-persistent preview for an allowed content update. Supported types are npxtraining, landing_page and npxquiz; only title, meta_title and meta_description are allowed. Always show the returned changes and ask for explicit confirmation before calling commit_content_update.',
+          'Creates a non-persistent preview for an allowed content update. Training content supports its editorial scalar fields; landing pages and quizzes support title, meta_title and meta_description. Always show every returned before/after change and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
           nid: z.number().int().positive(),
           expected_revision_id: z.number().int().positive(),
-          updates: z.object({
-            title: z.string().min(1).max(255).optional(),
-            meta_title: z.string().max(255).nullable().optional(),
-            meta_description: z.string().max(320).nullable().optional(),
-          }).refine((value) => Object.keys(value).length > 0, 'At least one update is required.'),
+          updates: contentUpdatesSchema,
         },
         outputSchema: {
           nid: z.number().int(),
@@ -342,16 +460,12 @@ function createServer(audit = null) {
       {
         title: 'Preview bulk content update',
         description:
-          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Supported types are npxtraining, landing_page and npxquiz; only title, meta_title and meta_description are allowed. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
+          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training content supports its editorial scalar fields; landing pages and quizzes support title, meta_title and meta_description. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
         inputSchema: {
           items: z.array(z.object({
             nid: z.number().int().positive(),
             expected_revision_id: z.number().int().positive(),
-            updates: z.object({
-              title: z.string().min(1).max(255).optional(),
-              meta_title: z.string().max(255).nullable().optional(),
-              meta_description: z.string().max(320).nullable().optional(),
-            }).refine((value) => Object.keys(value).length > 0, 'At least one update is required.'),
+            updates: contentUpdatesSchema,
           })).min(1).max(10).refine(
             (items) => new Set(items.map((item) => item.nid)).size === items.length,
             'Every nid must be unique.',
