@@ -177,6 +177,10 @@ const imageReferenceSchema = z.object({
   alt: z.string().max(512),
   title: z.string().max(1024).nullable().optional(),
 }).strict();
+const revisionReferenceSchema = z.object({
+  target_id: z.number().int().positive(),
+  target_revision_id: z.number().int().positive(),
+}).strict();
 const trainingSingleReferenceWriteFields = [
   'field_kategoria_followup',
   'field_npxtrainer_block_ref_',
@@ -203,6 +207,28 @@ const trainingImageWriteFields = [
   'field_npxtraining_block_img',
   'field_zaslepka',
 ];
+const trainingSingleParagraphReferenceWriteFields = [
+  'field_arguments_par',
+];
+const trainingMultiParagraphReferenceWriteFields = [
+  'field_faq_paragrafy',
+  'field_newsletter_paragrafy',
+  'field_npx_logotypes',
+  'field_program_szkolenia_paragraf',
+  'field_szkolenia_online_paragrafy',
+];
+const trainingSingleParagraphRevisionWriteFields = [
+  'field_blog_promo',
+  'field_contact_section',
+  'field_galeria',
+  'field_top_tytul',
+];
+const trainingMultiParagraphRevisionWriteFields = [
+  'field_blog_posts_par',
+  'field_cechy',
+  'field_faq',
+  'field_npxtraining_paragraf_trene',
+];
 const trainingWriteShape = {
   ...Object.fromEntries(trainingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
   ...Object.fromEntries(trainingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
@@ -223,6 +249,22 @@ const trainingWriteShape = {
   ...Object.fromEntries(trainingImageWriteFields.map((field) => [
     field,
     imageReferenceSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingSingleParagraphReferenceWriteFields.map((field) => [
+    field,
+    entityReferenceSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingMultiParagraphReferenceWriteFields.map((field) => [
+    field,
+    z.array(entityReferenceSchema).nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingSingleParagraphRevisionWriteFields.map((field) => [
+    field,
+    revisionReferenceSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingMultiParagraphRevisionWriteFields.map((field) => [
+    field,
+    z.array(revisionReferenceSchema).nullable().optional(),
   ])),
   field_hide_benefits: z.array(z.enum(['1', '2', '3', '4', '5'])).nullable().optional(),
   field_npxtraining_min_guaranted: z.enum(['0', '1', '2', '3', '4', '5', '6', '7', '8']).nullable().optional(),

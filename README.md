@@ -25,9 +25,11 @@ text, formatted text values, booleans, bounded integers, numbers, and simple
 lists. It also supports explicitly allowlisted references to existing nodes,
 taxonomy terms, and reusable blocks through strict `target_id` objects.
 Four training image fields can reference existing permanent image files with
-validated `alt` and optional `title` metadata. Paragraph and revision
-references, new file uploads, non-image files, publication state, and technical
-integration identifiers remain excluded. Preview never saves. Commit accepts
+validated `alt` and optional `title` metadata. Fourteen paragraph fields can
+reference existing paragraphs; revision-aware fields require both `target_id`
+and `target_revision_id`. Creating or editing nested paragraphs, new file
+uploads, non-image files, publication state, and technical integration
+identifiers remain excluded. Preview never saves. Commit accepts
 only the one-time preview token and explicit confirmation; Drupal remains the
 authoritative permission, type validation, target validation, allowlist,
 revision-locking, and audit layer.
