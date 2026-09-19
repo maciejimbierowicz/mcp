@@ -11,17 +11,34 @@ Content API:
 - `search_content`,
 - `get_content_write_audit`.
 
-When `MCP_WRITE_ENABLED=true`, it additionally exposes four restricted tools:
+When `MCP_WRITE_ENABLED=true`, it additionally exposes six restricted tools:
 
+- `create_content_upload`,
+- `get_content_upload_status`,
 - `preview_content_update`,
 - `commit_content_update`,
 - `preview_content_bulk_update`,
 - `commit_content_bulk_update`.
 
-WRITE is limited to `title`, `meta_title`, and `meta_description` on
-`npxtraining`, `landing_page`, and `npxquiz`. Preview never saves. Commit accepts only the one-time preview
-token and explicit confirmation; Drupal remains the authoritative permission,
-allowlist, revision-locking, and audit layer.
+WRITE supports `title`, `meta_title`, and `meta_description` on
+`npxtraining`, `landing_page`, and `npxquiz`. Training content additionally
+supports the editorial scalar fields declared in the preview tool schema:
+text, formatted text values, booleans, bounded integers, numbers, and simple
+lists. It also supports explicitly allowlisted references to existing nodes,
+taxonomy terms, and reusable blocks through strict `target_id` objects.
+Four training image fields can reference existing permanent image files with
+validated `alt` and optional `title` metadata. Fourteen paragraph fields can
+reference existing paragraphs; revision-aware fields require both `target_id`
+and `target_revision_id`. Existing embedded paragraphs may include `bundle` and
+a non-empty `fields` object to edit nested values. New embedded paragraphs use
+`bundle` and `fields` without IDs. New images and files use a destination-bound,
+10-minute browser upload link, followed by status verification and the normal
+preview/confirmation flow. `field_program_szkolenia` accepts up to two files;
+writable Paragraph image/file fields also accept uploads. Publication state and
+technical integration identifiers remain excluded. Preview never saves. Commit accepts
+only the one-time preview token and explicit confirmation; Drupal remains the
+authoritative permission, type validation, target validation, allowlist,
+revision-locking, and audit layer.
 
 The Drupal allowlist currently exposes `npxtraining`, `landing_page` and
 `npxquiz`. Quiz structure is read with `expand` on `field_questions` and
@@ -95,6 +112,11 @@ every item receives its own Drupal revision and audit record.
 Drupal also limits one field of one NID to one successful WRITE per minute and
 the technical WRITE account to 10 changed content items per minute. Bulk counts
 each item. A rejected commit returns `rate_limited` and a retry delay.
+
+For a new file, call `create_content_upload` with the current revision and exact
+destination. Give its URL to the user, then call `get_content_upload_status`.
+Only an `uploaded` token may be placed in the matching image/file field during
+preview. The link expires after 10 minutes and accepts one file up to 2 MiB.
 
 `get_content_write_audit` returns the separate MCP WRITE audit trail for a node.
 Full Drupal content history remains available through the revision tools.
@@ -259,7 +281,7 @@ that HTML tags are missing.
 - The inbound MCP token is a single application key, not a human identity.
   Whoever holds it can call every tool enabled on that MCP server. Keep it on the approved ChatGPT
   connector only. Drupal Basic auth is a separate service account.
-- Seven READ tools are annotated as read-only and non-destructive. Four WRITE
+- Seven READ tools are annotated as read-only and non-destructive. Six WRITE
   tools are exposed only when `MCP_WRITE_ENABLED=true` and are marked as writes.
 - Drupal independently enforces its bundle allowlist, entity access, role, and
   permission.

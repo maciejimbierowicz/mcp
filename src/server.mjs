@@ -69,6 +69,255 @@ const schemaFieldOutput = z.object({
   read_only: z.boolean(),
 });
 
+const trainingTextWriteFields = [
+  'field_blog_after_text',
+  'field_blog_section_title',
+  'field_blog_tekst_nad_artykulami',
+  'field_extra_tekst_g3',
+  'field_extra_tekst_oni_juz_byli',
+  'field_extra_tekst_za_co_nas_',
+  'field_field_tytul_sekcji_g3',
+  'field_link_sekcji_',
+  'field_link_sekcji_argumenty',
+  'field_link_sekcji_dla_kogo',
+  'field_link_sekcji_efekty',
+  'field_link_sekcji_faq',
+  'field_link_sekcji_kontakt',
+  'field_link_sekcji_metodyka',
+  'field_link_sekcji_nasza_jakosc_t',
+  'field_link_sekcji_oni_juz_byli_n',
+  'field_link_sekcji_program_szkole',
+  'field_link_sekcji_szkolenia_onli',
+  'field_link_sekcji_wideo',
+  'field_link_sekcji_wideo_opinie',
+  'field_link_sekcji_wyznaczamy_now',
+  'field_link_sekcji_zapisz_sie',
+  'field_link_sekcji_za_co_nas_uwie',
+  'field_methodology__section_title',
+  'field_nasza_jakosc_twoj_komfort',
+  'field_npxtraining_block_info',
+  'field_npxtraining_cert_title',
+  'field_npxtraining_cetxt',
+  'field_npxtraining_dla_kogo',
+  'field_npxtraining_efekty',
+  'field_npxtraining_knowledge',
+  'field_npxtraining_metodologia',
+  'field_npxtraining_pdftxt',
+  'field_npxtraining_place_txt',
+  'field_npxtraining_program',
+  'field_npxtraining_program_lp',
+  'field_npxtraining_promotion',
+  'field_npxtraining_seo',
+  'field_npxtraining_tytul_formalny',
+  'field_npxtraining_tytul_w_opinii',
+  'field_npxtraining_you_learn',
+  'field_npx_more_rel_tr_txt',
+  'field_npx_sections_hide',
+  'field_npx_sections_order',
+  'field_obszar_tematyczny',
+  'field_opis_sekcji_galeria',
+  'field_opis_sekcji_galeria_dolny',
+  'field_opis_sekcji_program',
+  'field_podtytul',
+  'field_polityka_rabatowa',
+  'field_program_szkolenia_wstep',
+  'field_referencje_naglowek',
+  'field_szkolenia_online_opis',
+  'field_term_table_title',
+  'field_text_after_terms',
+  'field_text_before_terms',
+  'field_tytul_sekcji_faq',
+  'field_tytul_sekcji_g15',
+  'field_tytul_sekcji_g16',
+  'field_tytul_sekcji_g19',
+  'field_tytul_sekcji_g2',
+  'field_tytul_sekcji_g20',
+  'field_tytul_sekcji_g4',
+  'field_tytul_sekcji_g6',
+  'field_tytul_sekcji_g7',
+  'field_tytul_sekcji_g8',
+  'field_tytul_sekcji_g9',
+  'field_tytul_sekcji_galeria',
+  'field_tytul_sekcji_wideo_opinie',
+  'field_video_text',
+  'field_zajawka',
+  'field_zajawka_termin',
+];
+const trainingBooleanWriteFields = [
+  'field_npxtraining_closed',
+  'field_npxtraining_laptop_info',
+  'field_npxtraining_online',
+  'field_npxtraining_pair_only',
+  'field_npxtraining_stationary',
+  'field_npxtraining_webinar',
+  'field_npxt_show_top_quick_info',
+  'field_online_live',
+  'field_seminarium',
+];
+const trainingIntegerWriteFields = [
+  'field_duration_days_count',
+  'field_duration_total_hours',
+  'field_npxtraining_liczba_dni_lp',
+];
+const trainingNumberWriteFields = [
+  'field_npxtraining_discount_fxd',
+  'field_npxtraining_discount_per',
+  'field_npxtraining_price',
+];
+const trainingMultiTextWriteFields = [
+  'field_duration_daily_schedule',
+  'field_npxtraining_references',
+  'field_npxtraining_reviews',
+];
+const entityReferenceSchema = z.object({
+  target_id: z.number().int().positive(),
+}).strict();
+const uploadTokenSchema = z.string().regex(/^[a-f0-9]{64}$/);
+const imageMetadataShape = {
+  alt: z.string().max(512),
+  title: z.string().max(1024).nullable().optional(),
+};
+const imageReferenceSchema = z.union([
+  z.object({ target_id: z.number().int().positive(), ...imageMetadataShape }).strict(),
+  z.object({ upload_token: uploadTokenSchema, ...imageMetadataShape }).strict(),
+]);
+const fileReferenceSchema = z.union([
+  z.object({
+    target_id: z.number().int().positive(),
+    description: z.string().max(1024).nullable().optional(),
+    display: z.boolean().optional(),
+  }).strict(),
+  z.object({
+    upload_token: uploadTokenSchema,
+    description: z.string().max(1024).nullable().optional(),
+    display: z.boolean().optional(),
+  }).strict(),
+]);
+const paragraphFieldRecordSchema = z.record(
+  z.string().regex(/^field_[a-z0-9_]+$/),
+  z.unknown(),
+).refine((value) => Object.keys(value).length <= 50, 'Paragraph fields cannot exceed 50 entries.');
+const paragraphFieldsSchema = paragraphFieldRecordSchema.refine(
+  (value) => Object.keys(value).length > 0,
+  'Paragraph fields cannot be empty.',
+);
+const existingParagraphWriteItemSchema = z.object({
+  target_id: z.number().int().positive(),
+  target_revision_id: z.number().int().positive(),
+  bundle: z.string().min(1).max(128).optional()
+    .describe('Required together with fields when editing this existing Paragraph.'),
+  fields: paragraphFieldsSchema.optional()
+    .describe('Nested field changes for this existing Paragraph; requires bundle. Omit both bundle and fields to preserve it unchanged.'),
+}).strict().refine(
+  (value) => (value.bundle === undefined) === (value.fields === undefined),
+  { message: 'Existing Paragraph edits require bundle and fields together.' },
+);
+const paragraphWriteItemSchema = z.union([
+  existingParagraphWriteItemSchema,
+  z.object({
+    bundle: z.string().min(1).max(128),
+    fields: paragraphFieldRecordSchema,
+  }).strict(),
+]);
+const trainingSingleReferenceWriteFields = [
+  'field_kategoria_followup',
+  'field_npxtrainer_block_ref_',
+  'field_npxtrainer_block_ref_8_cec',
+  'field_npxtrainer_block_ref_rev_r',
+  'field_npxtraining_category',
+  'field_npxtraining_methods',
+];
+const trainingMultiReferenceWriteFields = [
+  'field_blog_posts',
+  'field_kategoria',
+  'field_npxtraining_dates',
+  'field_npx_more_related_training',
+  'field_npx_related_training',
+  'field_oni_juz_byli',
+  'field_opinie_wideo_ref',
+  'field_referencje_i_opinie',
+  'field_tagi',
+  'field_training_languages',
+];
+const trainingImageWriteFields = [
+  'field_miniaturka',
+  'field_seo_image',
+  'field_npxtraining_block_img',
+  'field_zaslepka',
+];
+const trainingSingleParagraphReferenceWriteFields = [
+  'field_arguments_par',
+];
+const trainingMultiParagraphReferenceWriteFields = [
+  'field_faq_paragrafy',
+  'field_newsletter_paragrafy',
+  'field_npx_logotypes',
+  'field_program_szkolenia_paragraf',
+  'field_szkolenia_online_paragrafy',
+];
+const trainingSingleParagraphRevisionWriteFields = [
+  'field_blog_promo',
+  'field_contact_section',
+  'field_galeria',
+  'field_top_tytul',
+];
+const trainingMultiParagraphRevisionWriteFields = [
+  'field_blog_posts_par',
+  'field_cechy',
+  'field_faq',
+  'field_npxtraining_paragraf_trene',
+];
+const trainingWriteShape = {
+  ...Object.fromEntries(trainingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
+  ...Object.fromEntries(trainingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
+  ...Object.fromEntries(trainingIntegerWriteFields.map((field) => [field, z.number().int().nullable().optional()])),
+  ...Object.fromEntries(trainingNumberWriteFields.map((field) => [field, z.number().finite().nullable().optional()])),
+  ...Object.fromEntries(trainingMultiTextWriteFields.map((field) => [
+    field,
+    z.array(z.string()).nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingSingleReferenceWriteFields.map((field) => [
+    field,
+    entityReferenceSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingMultiReferenceWriteFields.map((field) => [
+    field,
+    z.array(entityReferenceSchema).nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingImageWriteFields.map((field) => [
+    field,
+    imageReferenceSchema.nullable().optional(),
+  ])),
+  field_program_szkolenia: z.array(fileReferenceSchema).max(2).nullable().optional(),
+  ...Object.fromEntries(trainingSingleParagraphReferenceWriteFields.map((field) => [
+    field,
+    entityReferenceSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingMultiParagraphReferenceWriteFields.map((field) => [
+    field,
+    z.array(entityReferenceSchema).nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingSingleParagraphRevisionWriteFields.map((field) => [
+    field,
+    paragraphWriteItemSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(trainingMultiParagraphRevisionWriteFields.map((field) => [
+    field,
+    z.array(paragraphWriteItemSchema).max(50).nullable().optional(),
+  ])),
+  field_hide_benefits: z.array(z.enum(['1', '2', '3', '4', '5'])).nullable().optional(),
+  field_npxtraining_min_guaranted: z.enum(['0', '1', '2', '3', '4', '5', '6', '7', '8']).nullable().optional(),
+};
+const contentUpdatesSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  meta_title: z.string().max(255).nullable().optional(),
+  meta_description: z.string().max(320).nullable().optional(),
+  ...trainingWriteShape,
+}).strict().refine(
+  (value) => Object.keys(value).length > 0,
+  'At least one update is required.',
+);
+
 function toolError(summary, error, audit) {
   const parts = [summary];
   let code = 'internal';
@@ -297,19 +546,97 @@ function createServer(audit = null) {
 
   if (drupalWriteClient) {
     server.registerTool(
+      'create_content_upload',
+      {
+        title: 'Create secure content upload',
+        description:
+          'Creates a 10-minute browser upload link bound to one exact content revision and image/file destination. Give upload_url to the user, then use get_content_upload_status before previewing a content update with upload_token.',
+        inputSchema: {
+          nid: z.number().int().positive(),
+          expected_revision_id: z.number().int().positive(),
+          destination: z.union([
+            z.object({
+              scope: z.literal('content'),
+              field: z.string().regex(/^field_[a-z0-9_]+$/),
+            }).strict(),
+            z.object({
+              scope: z.literal('paragraph'),
+              bundle: z.string().min(1).max(128),
+              field: z.string().regex(/^field_[a-z0-9_]+$/),
+            }).strict(),
+          ]),
+        },
+        outputSchema: {
+          upload_token: uploadTokenSchema,
+          status: z.literal('pending'),
+          destination: z.record(z.string(), z.string()),
+          allowed_extensions: z.array(z.string()),
+          max_bytes: z.number().int().positive(),
+          expires_at: z.string(),
+          upload_url: z.string().url(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      async ({ nid, expected_revision_id: expectedRevisionId, destination }) => {
+        try {
+          const result = await drupalWriteClient.post(`/api/v1/content/${nid}/uploads`, {
+            nid,
+            expected_revision_id: expectedRevisionId,
+            destination,
+          });
+          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+        catch (error) {
+          return toolError('Could not create content upload.', error, audit);
+        }
+      },
+    );
+
+    server.registerTool(
+      'get_content_upload_status',
+      {
+        title: 'Get secure content upload status',
+        description:
+          'Checks whether the user completed a previously created browser upload. Do not preview the content change until status is uploaded.',
+        inputSchema: {
+          upload_token: uploadTokenSchema,
+        },
+        outputSchema: {
+          upload_token: uploadTokenSchema,
+          status: z.enum(['pending', 'uploaded']),
+          destination: z.record(z.string(), z.string()),
+          file: z.object({
+            target_id: z.number().int().positive(),
+            filename: z.string(),
+            mime_type: z.string(),
+            size: z.number().int().positive(),
+          }).nullable(),
+        },
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+      },
+      async ({ upload_token: uploadToken }) => {
+        try {
+          const result = await drupalWriteClient.get(
+            `/api/v1/content/uploads/${uploadToken}/status`,
+          );
+          return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+        catch (error) {
+          return toolError('Could not read content upload status.', error, audit);
+        }
+      },
+    );
+
+    server.registerTool(
       'preview_content_update',
       {
         title: 'Preview content update',
         description:
-          'Creates a non-persistent preview for an allowed content update. Supported types are npxtraining, landing_page and npxquiz; only title, meta_title and meta_description are allowed. Always show the returned changes and ask for explicit confirmation before calling commit_content_update.',
+          'Creates a non-persistent preview for an allowed content update. Training content supports its editorial scalar fields; landing pages and quizzes support title, meta_title and meta_description. Always show every returned before/after change and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
           nid: z.number().int().positive(),
           expected_revision_id: z.number().int().positive(),
-          updates: z.object({
-            title: z.string().min(1).max(255).optional(),
-            meta_title: z.string().max(255).nullable().optional(),
-            meta_description: z.string().max(320).nullable().optional(),
-          }).refine((value) => Object.keys(value).length > 0, 'At least one update is required.'),
+          updates: contentUpdatesSchema,
         },
         outputSchema: {
           nid: z.number().int(),
@@ -342,16 +669,12 @@ function createServer(audit = null) {
       {
         title: 'Preview bulk content update',
         description:
-          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Supported types are npxtraining, landing_page and npxquiz; only title, meta_title and meta_description are allowed. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
+          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training content supports its editorial scalar fields; landing pages and quizzes support title, meta_title and meta_description. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
         inputSchema: {
           items: z.array(z.object({
             nid: z.number().int().positive(),
             expected_revision_id: z.number().int().positive(),
-            updates: z.object({
-              title: z.string().min(1).max(255).optional(),
-              meta_title: z.string().max(255).nullable().optional(),
-              meta_description: z.string().max(320).nullable().optional(),
-            }).refine((value) => Object.keys(value).length > 0, 'At least one update is required.'),
+            updates: contentUpdatesSchema,
           })).min(1).max(10).refine(
             (items) => new Set(items.map((item) => item.nid)).size === items.length,
             'Every nid must be unique.',
