@@ -193,10 +193,6 @@ const fileReferenceSchema = z.union([
     display: z.boolean().optional(),
   }).strict(),
 ]);
-const revisionReferenceSchema = z.object({
-  target_id: z.number().int().positive(),
-  target_revision_id: z.number().int().positive(),
-}).strict();
 const paragraphFieldRecordSchema = z.record(
   z.string().regex(/^field_[a-z0-9_]+$/),
   z.unknown(),
@@ -205,14 +201,19 @@ const paragraphFieldsSchema = paragraphFieldRecordSchema.refine(
   (value) => Object.keys(value).length > 0,
   'Paragraph fields cannot be empty.',
 );
+const existingParagraphWriteItemSchema = z.object({
+  target_id: z.number().int().positive(),
+  target_revision_id: z.number().int().positive(),
+  bundle: z.string().min(1).max(128).optional()
+    .describe('Required together with fields when editing this existing Paragraph.'),
+  fields: paragraphFieldsSchema.optional()
+    .describe('Nested field changes for this existing Paragraph; requires bundle. Omit both bundle and fields to preserve it unchanged.'),
+}).strict().refine(
+  (value) => (value.bundle === undefined) === (value.fields === undefined),
+  { message: 'Existing Paragraph edits require bundle and fields together.' },
+);
 const paragraphWriteItemSchema = z.union([
-  revisionReferenceSchema,
-  z.object({
-    target_id: z.number().int().positive(),
-    target_revision_id: z.number().int().positive(),
-    bundle: z.string().min(1).max(128),
-    fields: paragraphFieldsSchema,
-  }).strict(),
+  existingParagraphWriteItemSchema,
   z.object({
     bundle: z.string().min(1).max(128),
     fields: paragraphFieldRecordSchema,
