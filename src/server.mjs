@@ -500,8 +500,8 @@ function createServer(audit = null) {
       inputSchema: {
         nid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER)
           .describe('Numeric Drupal node ID.'),
-        fields: z.array(z.string().min(1).max(128)).max(50).optional()
-          .describe('Optional Drupal or logical field names to return.'),
+        fields: z.array(z.string().min(1).max(128)).max(200).optional()
+          .describe('Optional Drupal or logical field names to return; omit this argument for every accessible field.'),
         expand: z.array(z.string().min(1).max(128)).max(10).optional()
           .describe(
             'Explicit entity-reference field paths to expand. For a landing page H1 use field_top_tytul. '
