@@ -71,6 +71,30 @@ for (const field of [
   assert(serverSource.includes('' + field + ''), 'Landing page WRITE schema must include "' + field + '".');
 }
 
+const quizWriteStart = serverSource.indexOf('const quizTextWriteFields');
+const quizWriteEnd = serverSource.indexOf('const trainingWriteShape');
+assert(quizWriteStart >= 0 && quizWriteEnd > quizWriteStart, 'Quiz WRITE schema boundaries must exist.');
+const quizWriteSource = serverSource.slice(quizWriteStart, quizWriteEnd);
+for (const field of [
+  'body: textWithSummarySchema',
+  'field_btn_check',
+  'field_btn_end',
+  'field_btn_end_force',
+  'field_btn_start',
+  'field_grafika_naglowka',
+  'field_is_testquiz',
+  'field_kategoria',
+  'field_quiz_image',
+  'field_quiz_review_ref',
+  'field_results',
+  'field_show_hints',
+  'field_zawartosc',
+  'field_zdjecie_tla',
+]) {
+  assert(quizWriteSource.includes('' + field + ''), 'Quiz WRITE schema must include "' + field + '".');
+}
+assert(!quizWriteSource.includes('field_questions'), 'Quiz questions must remain excluded from WRITE.');
+
 const prompts = readFileSync(join(root, 'prompts/chatgpt-read-regression.md'), 'utf8');
 for (const heading of [
   'Pytanie o dane',

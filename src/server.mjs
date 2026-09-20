@@ -291,6 +291,20 @@ const landingSingleParagraphRevisionWriteFields = [
 const landingMultiParagraphRevisionWriteFields = [
   'field_tiles_paragraphs',
 ];
+const quizTextWriteFields = [
+  'field_btn_check',
+  'field_btn_end',
+  'field_btn_start',
+];
+const quizBooleanWriteFields = [
+  'field_btn_end_force',
+  'field_is_testquiz',
+];
+const quizImageWriteFields = [
+  'field_grafika_naglowka',
+  'field_quiz_image',
+  'field_zdjecie_tla',
+];
 const landingWriteShape = {
   body: textWithSummarySchema.nullable().optional(),
   ...Object.fromEntries(landingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
@@ -311,6 +325,21 @@ const landingWriteShape = {
     field,
     z.array(paragraphWriteItemSchema).max(50).nullable().optional(),
   ])),
+};
+
+const quizWriteShape = {
+  body: textWithSummarySchema.nullable().optional(),
+  field_results: z.string().min(1).optional(),
+  field_zawartosc: z.string().min(1).optional(),
+  ...Object.fromEntries(quizTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
+  ...Object.fromEntries(quizBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
+  ...Object.fromEntries(quizImageWriteFields.map((field) => [
+    field,
+    imageReferenceSchema.nullable().optional(),
+  ])),
+  field_kategoria: z.array(entityReferenceSchema).nullable().optional(),
+  field_quiz_review_ref: z.array(entityReferenceSchema).nullable().optional(),
+  field_show_hints: z.enum(['none', 'inline']).optional(),
 };
 
 const trainingWriteShape = {
@@ -360,6 +389,7 @@ const contentUpdatesSchema = z.object({
   meta_description: z.string().max(320).nullable().optional(),
   ...trainingWriteShape,
   ...landingWriteShape,
+  ...quizWriteShape,
 }).strict().refine(
   (value) => Object.keys(value).length > 0,
   'At least one update is required.',
@@ -679,7 +709,7 @@ function createServer(audit = null) {
       {
         title: 'Preview content update',
         description:
-          'Creates a non-persistent preview for an allowed content update. Training and landing page content support their declared editorial fields; quizzes support title, meta_title and meta_description. Always show every returned before/after change and ask for explicit confirmation before calling commit_content_update.',
+          'Creates a non-persistent preview for an allowed content update. Training, landing page and quiz content support their declared editorial fields. Always show every returned before/after change and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
           nid: z.number().int().positive(),
           expected_revision_id: z.number().int().positive(),
@@ -716,7 +746,7 @@ function createServer(audit = null) {
       {
         title: 'Preview bulk content update',
         description:
-          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training and landing page content support their declared editorial fields; quizzes support title, meta_title and meta_description. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
+          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training, landing page and quiz content support their declared editorial fields. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
         inputSchema: {
           items: z.array(z.object({
             nid: z.number().int().positive(),

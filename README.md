@@ -21,14 +21,15 @@ When `MCP_WRITE_ENABLED=true`, it additionally exposes six restricted tools:
 - `commit_content_bulk_update`.
 
 WRITE supports `title`, `meta_title`, and `meta_description` on
-`npxtraining`, `landing_page`, and `npxquiz`. Training and landing page content additionally
-supports the editorial scalar fields declared in the preview tool schema:
+`npxtraining`, `landing_page`, and `npxquiz`. All three content types additionally
+support the editorial scalar fields declared in the preview tool schema:
 text, formatted text values, booleans, bounded integers, numbers, and simple
-lists. Landing page `body` accepts `{ value, summary? }`; omitting `summary`
+lists. Landing page and quiz `body` accept `{ value, summary? }`; omitting `summary`
 preserves its current value, and Drupal preserves the existing text format.
+Quiz WRITE excludes questions, answers, and scoring entities.
 It also supports explicitly allowlisted references to existing nodes,
 taxonomy terms, and reusable blocks through strict `target_id` objects.
-Four training image fields can reference existing permanent image files with
+Four training and three quiz image fields can reference existing permanent image files with
 validated `alt` and optional `title` metadata. Fourteen paragraph fields can
 reference existing paragraphs; revision-aware fields require both `target_id`
 and `target_revision_id`. Existing embedded paragraphs may include `bundle` and
