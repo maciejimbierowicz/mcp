@@ -219,6 +219,10 @@ const paragraphWriteItemSchema = z.union([
     fields: paragraphFieldRecordSchema,
   }).strict(),
 ]);
+const textWithSummarySchema = z.object({
+  value: z.string().min(1),
+  summary: z.string().nullable().optional(),
+}).strict();
 const trainingSingleReferenceWriteFields = [
   'field_kategoria_followup',
   'field_npxtrainer_block_ref_',
@@ -288,6 +292,7 @@ const landingMultiParagraphRevisionWriteFields = [
   'field_tiles_paragraphs',
 ];
 const landingWriteShape = {
+  body: textWithSummarySchema.nullable().optional(),
   ...Object.fromEntries(landingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
   ...Object.fromEntries(landingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
   ...Object.fromEntries(landingSingleReferenceWriteFields.map((field) => [

@@ -55,6 +55,8 @@ for (const token of [
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const serverSource = readFileSync(join(root, 'src/server.mjs'), 'utf8');
 assert(serverSource.includes('SERVER_INSTRUCTIONS'), 'The MCP server must use SERVER_INSTRUCTIONS.');
+assert(serverSource.includes('textWithSummarySchema'), 'The MCP server must declare formatted body WRITE.');
+assert(serverSource.includes('body: textWithSummarySchema'), 'Landing page WRITE schema must include body.');
 
 for (const field of [
   'field_faq_intro',

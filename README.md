@@ -24,7 +24,9 @@ WRITE supports `title`, `meta_title`, and `meta_description` on
 `npxtraining`, `landing_page`, and `npxquiz`. Training and landing page content additionally
 supports the editorial scalar fields declared in the preview tool schema:
 text, formatted text values, booleans, bounded integers, numbers, and simple
-lists. It also supports explicitly allowlisted references to existing nodes,
+lists. Landing page `body` accepts `{ value, summary? }`; omitting `summary`
+preserves its current value, and Drupal preserves the existing text format.
+It also supports explicitly allowlisted references to existing nodes,
 taxonomy terms, and reusable blocks through strict `target_id` objects.
 Four training image fields can reference existing permanent image files with
 validated `alt` and optional `title` metadata. Fourteen paragraph fields can
