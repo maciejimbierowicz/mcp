@@ -48,6 +48,8 @@ for (const token of [
   'preview_content_bulk_update',
   'commit_content_bulk_update',
   'get_content_write_audit',
+  'every before and after value completely and exactly',
+  'do not ask for confirmation until the full exact diff is visible',
 ]) {
   assert(SERVER_INSTRUCTIONS.includes(token), `Server instructions must mention "${token}".`);
 }

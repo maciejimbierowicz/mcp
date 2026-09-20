@@ -709,7 +709,7 @@ function createServer(audit = null) {
       {
         title: 'Preview content update',
         description:
-          'Creates a non-persistent preview for an allowed content update. Training, landing page and quiz content support their declared editorial fields. Always show every returned before/after change and ask for explicit confirmation before calling commit_content_update.',
+          'Creates a non-persistent preview for an allowed content update. Training, landing page and quiz content support their declared editorial fields. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
           nid: z.number().int().positive(),
           expected_revision_id: z.number().int().positive(),
@@ -746,7 +746,7 @@ function createServer(audit = null) {
       {
         title: 'Preview bulk content update',
         description:
-          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training, landing page and quiz content support their declared editorial fields. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
+          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training, landing page and quiz content support their declared editorial fields. Use every current revision ID, show every complete before/after value in the batch without summaries or truncation and ask once for explicit confirmation before calling commit_content_bulk_update.',
         inputSchema: {
           items: z.array(z.object({
             nid: z.number().int().positive(),
