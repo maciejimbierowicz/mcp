@@ -56,6 +56,19 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const serverSource = readFileSync(join(root, 'src/server.mjs'), 'utf8');
 assert(serverSource.includes('SERVER_INSTRUCTIONS'), 'The MCP server must use SERVER_INSTRUCTIONS.');
 
+for (const field of [
+  'field_faq_intro',
+  'field_tekst_dolny',
+  'field_show_hub_hero_actions',
+  'field_related_seminar',
+  'field_related_training',
+  'field_related_trainings',
+  'field_hub_hero_actions',
+  'field_tiles_paragraphs',
+]) {
+  assert(serverSource.includes('' + field + ''), 'Landing page WRITE schema must include "' + field + '".');
+}
+
 const prompts = readFileSync(join(root, 'prompts/chatgpt-read-regression.md'), 'utf8');
 for (const heading of [
   'Pytanie o dane',

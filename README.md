@@ -21,7 +21,7 @@ When `MCP_WRITE_ENABLED=true`, it additionally exposes six restricted tools:
 - `commit_content_bulk_update`.
 
 WRITE supports `title`, `meta_title`, and `meta_description` on
-`npxtraining`, `landing_page`, and `npxquiz`. Training content additionally
+`npxtraining`, `landing_page`, and `npxquiz`. Training and landing page content additionally
 supports the editorial scalar fields declared in the preview tool schema:
 text, formatted text values, booleans, bounded integers, numbers, and simple
 lists. It also supports explicitly allowlisted references to existing nodes,

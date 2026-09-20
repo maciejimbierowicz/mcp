@@ -267,6 +267,47 @@ const trainingMultiParagraphRevisionWriteFields = [
   'field_faq',
   'field_npxtraining_paragraf_trene',
 ];
+const landingTextWriteFields = [
+  'field_faq_intro',
+  'field_tekst_dolny',
+];
+const landingBooleanWriteFields = [
+  'field_show_hub_hero_actions',
+];
+const landingSingleReferenceWriteFields = [
+  'field_related_seminar',
+  'field_related_training',
+];
+const landingMultiReferenceWriteFields = [
+  'field_related_trainings',
+];
+const landingSingleParagraphRevisionWriteFields = [
+  'field_hub_hero_actions',
+];
+const landingMultiParagraphRevisionWriteFields = [
+  'field_tiles_paragraphs',
+];
+const landingWriteShape = {
+  ...Object.fromEntries(landingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
+  ...Object.fromEntries(landingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
+  ...Object.fromEntries(landingSingleReferenceWriteFields.map((field) => [
+    field,
+    entityReferenceSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(landingMultiReferenceWriteFields.map((field) => [
+    field,
+    z.array(entityReferenceSchema).nullable().optional(),
+  ])),
+  ...Object.fromEntries(landingSingleParagraphRevisionWriteFields.map((field) => [
+    field,
+    paragraphWriteItemSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(landingMultiParagraphRevisionWriteFields.map((field) => [
+    field,
+    z.array(paragraphWriteItemSchema).max(50).nullable().optional(),
+  ])),
+};
+
 const trainingWriteShape = {
   ...Object.fromEntries(trainingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
   ...Object.fromEntries(trainingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
@@ -313,6 +354,7 @@ const contentUpdatesSchema = z.object({
   meta_title: z.string().max(255).nullable().optional(),
   meta_description: z.string().max(320).nullable().optional(),
   ...trainingWriteShape,
+  ...landingWriteShape,
 }).strict().refine(
   (value) => Object.keys(value).length > 0,
   'At least one update is required.',
@@ -632,7 +674,7 @@ function createServer(audit = null) {
       {
         title: 'Preview content update',
         description:
-          'Creates a non-persistent preview for an allowed content update. Training content supports its editorial scalar fields; landing pages and quizzes support title, meta_title and meta_description. Always show every returned before/after change and ask for explicit confirmation before calling commit_content_update.',
+          'Creates a non-persistent preview for an allowed content update. Training and landing page content support their declared editorial fields; quizzes support title, meta_title and meta_description. Always show every returned before/after change and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
           nid: z.number().int().positive(),
           expected_revision_id: z.number().int().positive(),
@@ -669,7 +711,7 @@ function createServer(audit = null) {
       {
         title: 'Preview bulk content update',
         description:
-          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training content supports its editorial scalar fields; landing pages and quizzes support title, meta_title and meta_description. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
+          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training and landing page content support their declared editorial fields; quizzes support title, meta_title and meta_description. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
         inputSchema: {
           items: z.array(z.object({
             nid: z.number().int().positive(),
