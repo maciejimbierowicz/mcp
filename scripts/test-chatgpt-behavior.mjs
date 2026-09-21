@@ -83,10 +83,8 @@ for (const field of [
   'field_btn_end',
   'field_btn_end_force',
   'field_btn_start',
-  'field_grafika_naglowka',
   'field_is_testquiz',
   'field_kategoria',
-  'field_quiz_image',
   'field_quiz_review_ref',
   'field_results',
   'field_show_hints',
@@ -96,6 +94,9 @@ for (const field of [
   assert(quizWriteSource.includes('' + field + ''), 'Quiz WRITE schema must include "' + field + '".');
 }
 assert(!quizWriteSource.includes('field_questions'), 'Quiz questions must remain excluded from WRITE.');
+for (const field of ['field_grafika_naglowka', 'field_quiz_image']) {
+  assert(!quizWriteSource.includes(field), 'Unused quiz field must remain excluded from WRITE: ' + field);
+}
 
 const prompts = readFileSync(join(root, 'prompts/chatgpt-read-regression.md'), 'utf8');
 for (const heading of [

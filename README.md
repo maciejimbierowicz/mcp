@@ -29,12 +29,15 @@ preserves its current value, and Drupal preserves the existing text format.
 Quiz WRITE excludes questions, answers, and scoring entities.
 It also supports explicitly allowlisted references to existing nodes,
 taxonomy terms, and reusable blocks through strict `target_id` objects.
-Four training and three quiz image fields can reference existing permanent image files with
-validated `alt` and optional `title` metadata. Fourteen paragraph fields can
+Three training and one quiz image field can reference existing permanent image files with
+validated `alt` and optional `title` metadata. Thirteen training paragraph fields can
 reference existing paragraphs; revision-aware fields require both `target_id`
 and `target_revision_id`. Existing embedded paragraphs may include `bundle` and
 a non-empty `fields` object to edit nested values. New embedded paragraphs use
-`bundle` and `fields` without IDs. New images and files use a destination-bound,
+`bundle` and `fields` without IDs.
+Existing Paragraphs cannot be removed through WRITE; every current item must
+remain in an update list when adding, editing, or reordering.
+New images and files use a destination-bound,
 10-minute browser upload link, followed by status verification and the normal
 preview/confirmation flow. `field_program_szkolenia` accepts up to two files;
 writable Paragraph image/file fields also accept uploads. Publication state and

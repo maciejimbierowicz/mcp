@@ -72,7 +72,6 @@ const schemaFieldOutput = z.object({
 const trainingTextWriteFields = [
   'field_blog_after_text',
   'field_blog_section_title',
-  'field_blog_tekst_nad_artykulami',
   'field_extra_tekst_g3',
   'field_extra_tekst_oni_juz_byli',
   'field_extra_tekst_za_co_nas_',
@@ -93,14 +92,12 @@ const trainingTextWriteFields = [
   'field_link_sekcji_wyznaczamy_now',
   'field_link_sekcji_zapisz_sie',
   'field_link_sekcji_za_co_nas_uwie',
-  'field_methodology__section_title',
   'field_nasza_jakosc_twoj_komfort',
   'field_npxtraining_block_info',
   'field_npxtraining_cert_title',
   'field_npxtraining_cetxt',
   'field_npxtraining_dla_kogo',
   'field_npxtraining_efekty',
-  'field_npxtraining_knowledge',
   'field_npxtraining_metodologia',
   'field_npxtraining_pdftxt',
   'field_npxtraining_place_txt',
@@ -109,19 +106,14 @@ const trainingTextWriteFields = [
   'field_npxtraining_promotion',
   'field_npxtraining_seo',
   'field_npxtraining_tytul_formalny',
-  'field_npxtraining_tytul_w_opinii',
   'field_npxtraining_you_learn',
   'field_npx_more_rel_tr_txt',
   'field_npx_sections_hide',
   'field_npx_sections_order',
   'field_obszar_tematyczny',
-  'field_opis_sekcji_galeria',
-  'field_opis_sekcji_galeria_dolny',
   'field_opis_sekcji_program',
   'field_podtytul',
-  'field_polityka_rabatowa',
   'field_program_szkolenia_wstep',
-  'field_referencje_naglowek',
   'field_szkolenia_online_opis',
   'field_term_table_title',
   'field_text_after_terms',
@@ -155,19 +147,12 @@ const trainingBooleanWriteFields = [
   'field_seminarium',
 ];
 const trainingIntegerWriteFields = [
-  'field_duration_days_count',
-  'field_duration_total_hours',
   'field_npxtraining_liczba_dni_lp',
 ];
 const trainingNumberWriteFields = [
-  'field_npxtraining_discount_fxd',
-  'field_npxtraining_discount_per',
   'field_npxtraining_price',
 ];
 const trainingMultiTextWriteFields = [
-  'field_duration_daily_schedule',
-  'field_npxtraining_references',
-  'field_npxtraining_reviews',
 ];
 const entityReferenceSchema = z.object({
   target_id: z.number().int().positive(),
@@ -227,9 +212,7 @@ const trainingSingleReferenceWriteFields = [
   'field_kategoria_followup',
   'field_npxtrainer_block_ref_',
   'field_npxtrainer_block_ref_8_cec',
-  'field_npxtrainer_block_ref_rev_r',
   'field_npxtraining_category',
-  'field_npxtraining_methods',
 ];
 const trainingMultiReferenceWriteFields = [
   'field_blog_posts',
@@ -245,7 +228,6 @@ const trainingMultiReferenceWriteFields = [
 ];
 const trainingImageWriteFields = [
   'field_miniaturka',
-  'field_seo_image',
   'field_npxtraining_block_img',
   'field_zaslepka',
 ];
@@ -260,7 +242,6 @@ const trainingMultiParagraphReferenceWriteFields = [
   'field_szkolenia_online_paragrafy',
 ];
 const trainingSingleParagraphRevisionWriteFields = [
-  'field_blog_promo',
   'field_contact_section',
   'field_galeria',
   'field_top_tytul',
@@ -301,8 +282,6 @@ const quizBooleanWriteFields = [
   'field_is_testquiz',
 ];
 const quizImageWriteFields = [
-  'field_grafika_naglowka',
-  'field_quiz_image',
   'field_zdjecie_tla',
 ];
 const landingWriteShape = {
