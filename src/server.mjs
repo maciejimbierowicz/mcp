@@ -72,7 +72,6 @@ const schemaFieldOutput = z.object({
 const trainingTextWriteFields = [
   'field_blog_after_text',
   'field_blog_section_title',
-  'field_blog_tekst_nad_artykulami',
   'field_extra_tekst_g3',
   'field_extra_tekst_oni_juz_byli',
   'field_extra_tekst_za_co_nas_',
@@ -93,14 +92,12 @@ const trainingTextWriteFields = [
   'field_link_sekcji_wyznaczamy_now',
   'field_link_sekcji_zapisz_sie',
   'field_link_sekcji_za_co_nas_uwie',
-  'field_methodology__section_title',
   'field_nasza_jakosc_twoj_komfort',
   'field_npxtraining_block_info',
   'field_npxtraining_cert_title',
   'field_npxtraining_cetxt',
   'field_npxtraining_dla_kogo',
   'field_npxtraining_efekty',
-  'field_npxtraining_knowledge',
   'field_npxtraining_metodologia',
   'field_npxtraining_pdftxt',
   'field_npxtraining_place_txt',
@@ -109,19 +106,14 @@ const trainingTextWriteFields = [
   'field_npxtraining_promotion',
   'field_npxtraining_seo',
   'field_npxtraining_tytul_formalny',
-  'field_npxtraining_tytul_w_opinii',
   'field_npxtraining_you_learn',
   'field_npx_more_rel_tr_txt',
   'field_npx_sections_hide',
   'field_npx_sections_order',
   'field_obszar_tematyczny',
-  'field_opis_sekcji_galeria',
-  'field_opis_sekcji_galeria_dolny',
   'field_opis_sekcji_program',
   'field_podtytul',
-  'field_polityka_rabatowa',
   'field_program_szkolenia_wstep',
-  'field_referencje_naglowek',
   'field_szkolenia_online_opis',
   'field_term_table_title',
   'field_text_after_terms',
@@ -155,19 +147,12 @@ const trainingBooleanWriteFields = [
   'field_seminarium',
 ];
 const trainingIntegerWriteFields = [
-  'field_duration_days_count',
-  'field_duration_total_hours',
   'field_npxtraining_liczba_dni_lp',
 ];
 const trainingNumberWriteFields = [
-  'field_npxtraining_discount_fxd',
-  'field_npxtraining_discount_per',
   'field_npxtraining_price',
 ];
 const trainingMultiTextWriteFields = [
-  'field_duration_daily_schedule',
-  'field_npxtraining_references',
-  'field_npxtraining_reviews',
 ];
 const entityReferenceSchema = z.object({
   target_id: z.number().int().positive(),
@@ -219,13 +204,15 @@ const paragraphWriteItemSchema = z.union([
     fields: paragraphFieldRecordSchema,
   }).strict(),
 ]);
+const textWithSummarySchema = z.object({
+  value: z.string().min(1),
+  summary: z.string().nullable().optional(),
+}).strict();
 const trainingSingleReferenceWriteFields = [
   'field_kategoria_followup',
   'field_npxtrainer_block_ref_',
   'field_npxtrainer_block_ref_8_cec',
-  'field_npxtrainer_block_ref_rev_r',
   'field_npxtraining_category',
-  'field_npxtraining_methods',
 ];
 const trainingMultiReferenceWriteFields = [
   'field_blog_posts',
@@ -241,7 +228,6 @@ const trainingMultiReferenceWriteFields = [
 ];
 const trainingImageWriteFields = [
   'field_miniaturka',
-  'field_seo_image',
   'field_npxtraining_block_img',
   'field_zaslepka',
 ];
@@ -256,7 +242,6 @@ const trainingMultiParagraphReferenceWriteFields = [
   'field_szkolenia_online_paragrafy',
 ];
 const trainingSingleParagraphRevisionWriteFields = [
-  'field_blog_promo',
   'field_contact_section',
   'field_galeria',
   'field_top_tytul',
@@ -267,6 +252,75 @@ const trainingMultiParagraphRevisionWriteFields = [
   'field_faq',
   'field_npxtraining_paragraf_trene',
 ];
+const landingTextWriteFields = [
+  'field_faq_intro',
+  'field_tekst_dolny',
+];
+const landingBooleanWriteFields = [
+  'field_show_hub_hero_actions',
+];
+const landingSingleReferenceWriteFields = [
+  'field_related_seminar',
+  'field_related_training',
+];
+const landingMultiReferenceWriteFields = [
+  'field_related_trainings',
+];
+const landingSingleParagraphRevisionWriteFields = [
+  'field_hub_hero_actions',
+];
+const landingMultiParagraphRevisionWriteFields = [
+  'field_tiles_paragraphs',
+];
+const quizTextWriteFields = [
+  'field_btn_check',
+  'field_btn_end',
+  'field_btn_start',
+];
+const quizBooleanWriteFields = [
+  'field_btn_end_force',
+  'field_is_testquiz',
+];
+const quizImageWriteFields = [
+  'field_zdjecie_tla',
+];
+const landingWriteShape = {
+  body: textWithSummarySchema.nullable().optional(),
+  ...Object.fromEntries(landingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
+  ...Object.fromEntries(landingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
+  ...Object.fromEntries(landingSingleReferenceWriteFields.map((field) => [
+    field,
+    entityReferenceSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(landingMultiReferenceWriteFields.map((field) => [
+    field,
+    z.array(entityReferenceSchema).nullable().optional(),
+  ])),
+  ...Object.fromEntries(landingSingleParagraphRevisionWriteFields.map((field) => [
+    field,
+    paragraphWriteItemSchema.nullable().optional(),
+  ])),
+  ...Object.fromEntries(landingMultiParagraphRevisionWriteFields.map((field) => [
+    field,
+    z.array(paragraphWriteItemSchema).max(50).nullable().optional(),
+  ])),
+};
+
+const quizWriteShape = {
+  body: textWithSummarySchema.nullable().optional(),
+  field_results: z.string().min(1).optional(),
+  field_zawartosc: z.string().min(1).optional(),
+  ...Object.fromEntries(quizTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
+  ...Object.fromEntries(quizBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
+  ...Object.fromEntries(quizImageWriteFields.map((field) => [
+    field,
+    imageReferenceSchema.nullable().optional(),
+  ])),
+  field_kategoria: z.array(entityReferenceSchema).nullable().optional(),
+  field_quiz_review_ref: z.array(entityReferenceSchema).nullable().optional(),
+  field_show_hints: z.enum(['none', 'inline']).optional(),
+};
+
 const trainingWriteShape = {
   ...Object.fromEntries(trainingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
   ...Object.fromEntries(trainingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
@@ -313,6 +367,8 @@ const contentUpdatesSchema = z.object({
   meta_title: z.string().max(255).nullable().optional(),
   meta_description: z.string().max(320).nullable().optional(),
   ...trainingWriteShape,
+  ...landingWriteShape,
+  ...quizWriteShape,
 }).strict().refine(
   (value) => Object.keys(value).length > 0,
   'At least one update is required.',
@@ -632,7 +688,7 @@ function createServer(audit = null) {
       {
         title: 'Preview content update',
         description:
-          'Creates a non-persistent preview for an allowed content update. Training content supports its editorial scalar fields; landing pages and quizzes support title, meta_title and meta_description. Always show every returned before/after change and ask for explicit confirmation before calling commit_content_update.',
+          'Creates a non-persistent preview for an allowed content update. Training, landing page and quiz content support their declared editorial fields. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
           nid: z.number().int().positive(),
           expected_revision_id: z.number().int().positive(),
@@ -669,7 +725,7 @@ function createServer(audit = null) {
       {
         title: 'Preview bulk content update',
         description:
-          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training content supports its editorial scalar fields; landing pages and quizzes support title, meta_title and meta_description. Use every current revision ID, show the complete batch and ask once for explicit confirmation before calling commit_content_bulk_update.',
+          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training, landing page and quiz content support their declared editorial fields. Use every current revision ID, show every complete before/after value in the batch without summaries or truncation and ask once for explicit confirmation before calling commit_content_bulk_update.',
         inputSchema: {
           items: z.array(z.object({
             nid: z.number().int().positive(),
