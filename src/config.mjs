@@ -71,6 +71,14 @@ if (writeEnabled && (!drupalWriteUsername || !drupalWritePassword)) {
   throw new Error('DRUPAL_WRITE_USERNAME and DRUPAL_WRITE_PASSWORD are required when MCP_WRITE_ENABLED=true.');
 }
 
+const gtmEnabled = parseBoolean("GTM_ENABLED", process.env.GTM_ENABLED, false);
+const gtmClientId = process.env.GTM_CLIENT_ID?.trim() ?? "";
+const gtmClientSecret = process.env.GTM_CLIENT_SECRET?.trim() ?? "";
+const gtmRefreshToken = process.env.GTM_REFRESH_TOKEN?.trim() ?? "";
+const gtmAccountId = process.env.GTM_ACCOUNT_ID?.trim() ?? "";
+if (gtmEnabled && (!gtmClientId || !gtmClientSecret || !gtmRefreshToken)) {
+  throw new Error("GTM_CLIENT_ID, GTM_CLIENT_SECRET and GTM_REFRESH_TOKEN are required when GTM_ENABLED=true.");
+}
 export const config = Object.freeze({
   port: parsePort(process.env.MCP_PORT),
   allowedHosts: parseAllowedHosts(process.env.MCP_ALLOWED_HOSTS),
@@ -87,4 +95,10 @@ export const config = Object.freeze({
   heavyConcurrency: parseBoundedInt('MCP_HEAVY_CONCURRENCY', process.env.MCP_HEAVY_CONCURRENCY, 2, 1, 8),
   heavyWaitMs: parseBoundedInt('MCP_HEAVY_WAIT_MS', process.env.MCP_HEAVY_WAIT_MS, 10000, 100, 60000),
   maxResponseBytes: parseBoundedInt('MCP_MAX_RESPONSE_BYTES', process.env.MCP_MAX_RESPONSE_BYTES, 2097152, 65536, 8388608),
+  gtmEnabled,
+  gtmClientId,
+  gtmClientSecret,
+  gtmRefreshToken,
+  gtmAccountId,
+  gtmTimeoutMs: parseTimeoutMs(process.env.GTM_TIMEOUT_MS),
 });

@@ -9,6 +9,8 @@ import { requireBearerToken } from './auth.mjs';
 import { config } from './config.mjs';
 import { SERVER_INSTRUCTIONS } from './chatgpt-behavior.mjs';
 import { DrupalApiError, DrupalClient } from './drupal-client.mjs';
+import { GtmClient } from './gtm-client.mjs';
+import { registerGtmTools } from './gtm-tools.mjs';
 import {
   createSemaphore,
   createTokenBucket,
@@ -30,6 +32,16 @@ const drupalWriteClient = config.writeEnabled
     password: config.drupalWritePassword,
     timeoutMs: config.drupalTimeoutMs,
     maxResponseBytes: config.maxResponseBytes,
+  })
+  : null;
+
+const gtmClient = config.gtmEnabled
+  ? new GtmClient({
+    clientId: config.gtmClientId,
+    clientSecret: config.gtmClientSecret,
+    refreshToken: config.gtmRefreshToken,
+    accountId: config.gtmAccountId,
+    timeoutMs: config.gtmTimeoutMs,
   })
   : null;
 
@@ -458,6 +470,10 @@ function createServer(audit = null) {
       instructions: SERVER_INSTRUCTIONS,
     },
   );
+
+  if (gtmClient) {
+    registerGtmTools(server, gtmClient);
+  }
 
   server.registerTool(
     'list_content_types',

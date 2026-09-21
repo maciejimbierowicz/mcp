@@ -9,5 +9,6 @@ export const SERVER_INSTRUCTIONS = [
   'meta_title, meta_description and canonical are stored Metatag overrides. Null means no override was saved, not that the HTML tag is missing.',
   'Lists from search_content and get_content_revisions are complete only when has_more is false. Continue with the returned cursor. Stopping early is a partial result.',
   'On error code response_too_large, retry with fewer fields or a lower limit instead of reporting that the data is unavailable. On code busy, wait and retry once. A WRITE result with status blocked and error code rate_limited means nothing was saved: report its exact error code and retry_after, and do not create another preview or retry automatically.',
+  'When GTM tools are available, they are strictly read-only and use only the Google tagmanager.readonly scope. Use gtm_list_accounts before selecting an account or container, then use the workspace, tag, trigger, variable and version tools with exact IDs returned by GTM. Never invent GTM IDs and never attempt write, publish or user-permission operations.',
   'This MCP does not install a ChatGPT Skill and cannot force the model to obey these rules.',
 ].join('\n\n');
