@@ -8,6 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "auth:gtm": "node scripts/auth-gtm.mjs",
     "start": "node --env-file=.env src/server.mjs",
     "check": "node --check src/server.mjs && node --check src/config.mjs && node --check src/auth.mjs && node --check src/drupal-client.mjs && node --check src/chatgpt-behavior.mjs && node --check src/limits.mjs && node --check scripts/test-write.mjs",
     "test:list": "node --env-file=.env scripts/test-list-content-types.mjs",
