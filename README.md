@@ -296,3 +296,6 @@ that HTML tags are missing.
 - `/mcp` audit logs are one JSON line on stderr: `request_id`, tool name,
   duration, `ok`/`error`. They never include Authorization, Drupal passwords,
   or field values. `/health` stays unauthenticated and does not call Drupal.
+## Google Tag Manager READ
+
+When `GTM_ENABLED=true`, the MCP exposes read-only GTM tools for the configured account, its containers, workspaces, tags, triggers, variables, built-in variables, container version headers and the live version. Configure `GTM_CLIENT_ID`, `GTM_CLIENT_SECRET`, `GTM_REFRESH_TOKEN` and required `GTM_ACCOUNT_ID`. The configured account ID is enforced as an allowlist. List tools accept `page_token`; continue while Google returns `nextPageToken`. The only requested Google scope is `https://www.googleapis.com/auth/tagmanager.readonly`; no GTM write or publish operation is implemented.
