@@ -472,7 +472,7 @@ function createServer(audit = null) {
   );
 
   if (gtmClient) {
-    registerGtmTools(server, gtmClient);
+    registerGtmTools(server, gtmClient, audit);
   }
 
   server.registerTool(

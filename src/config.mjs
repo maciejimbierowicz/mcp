@@ -76,8 +76,8 @@ const gtmClientId = process.env.GTM_CLIENT_ID?.trim() ?? "";
 const gtmClientSecret = process.env.GTM_CLIENT_SECRET?.trim() ?? "";
 const gtmRefreshToken = process.env.GTM_REFRESH_TOKEN?.trim() ?? "";
 const gtmAccountId = process.env.GTM_ACCOUNT_ID?.trim() ?? "";
-if (gtmEnabled && (!gtmClientId || !gtmClientSecret || !gtmRefreshToken)) {
-  throw new Error("GTM_CLIENT_ID, GTM_CLIENT_SECRET and GTM_REFRESH_TOKEN are required when GTM_ENABLED=true.");
+if (gtmEnabled && (!gtmClientId || !gtmClientSecret || !gtmRefreshToken || !gtmAccountId)) {
+  throw new Error("GTM_CLIENT_ID, GTM_CLIENT_SECRET, GTM_REFRESH_TOKEN and GTM_ACCOUNT_ID are required when GTM_ENABLED=true.");
 }
 export const config = Object.freeze({
   port: parsePort(process.env.MCP_PORT),

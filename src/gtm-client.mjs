@@ -44,9 +44,15 @@ export class GtmClient {
     return this.accessToken;
   }
 
-  async request(path) {
+  async request(path, query = {}) {
     const token = await this.getAccessToken();
-    const response = await fetch(`${GTM_API_BASE}/${path}`, {
+    const url = new URL(`${GTM_API_BASE}/${path}`);
+    for (const [name, value] of Object.entries(query)) {
+      if (value !== undefined && value !== null && String(value) !== '') {
+        url.searchParams.set(name, String(value));
+      }
+    }
+    const response = await fetch(url, {
       headers: {authorization: `Bearer ${token}`},
       signal: AbortSignal.timeout(this.timeoutMs),
     });
@@ -64,6 +70,9 @@ export class GtmClient {
   requireAccount(accountId) {
     const value = String(accountId || this.accountId || '').trim();
     if (!value) throw new GtmApiError('A GTM account_id is required.', {code: 'invalid_request'});
+    if (this.accountId && value !== this.accountId) {
+      throw new GtmApiError('The requested GTM account is not allowed by this MCP.', {status: 403, code: 'account_not_allowed'});
+    }
     return value;
   }
 
@@ -81,18 +90,22 @@ export class GtmClient {
     return `${container}/workspaces/${encodeURIComponent(workspace)}`;
   }
 
-  listAccounts() { return this.request('accounts'); }
-  listContainers(accountId) { return this.request(`accounts/${encodeURIComponent(this.requireAccount(accountId))}/containers`); }
-  listWorkspaces(accountId, containerId) { return this.request(`${this.requireContainer(accountId, containerId)}/workspaces`); }
+  async listAccounts() {
+    const accountId = this.requireAccount();
+    const account = await this.request(`accounts/${encodeURIComponent(accountId)}`);
+    return {account: [account]};
+  }
+  listContainers(accountId, pageToken) { return this.request(`accounts/${encodeURIComponent(this.requireAccount(accountId))}/containers`, {pageToken}); }
+  listWorkspaces(accountId, containerId, pageToken) { return this.request(`${this.requireContainer(accountId, containerId)}/workspaces`, {pageToken}); }
   getWorkspace(accountId, containerId, workspaceId) { return this.request(this.requireWorkspace(accountId, containerId, workspaceId)); }
   getWorkspaceStatus(accountId, containerId, workspaceId) { return this.request(`${this.requireWorkspace(accountId, containerId, workspaceId)}/status`); }
-  listResource(resource, accountId, containerId, workspaceId) { return this.request(`${this.requireWorkspace(accountId, containerId, workspaceId)}/${resource}`); }
+  listResource(resource, accountId, containerId, workspaceId, pageToken) { return this.request(`${this.requireWorkspace(accountId, containerId, workspaceId)}/${resource}`, {pageToken}); }
   getResource(resource, accountId, containerId, workspaceId, resourceId) {
     const id = String(resourceId || '').trim();
     if (!id) throw new GtmApiError(`A GTM ${resource}_id is required.`, {code: 'invalid_request'});
     return this.request(`${this.requireWorkspace(accountId, containerId, workspaceId)}/${resource}/${encodeURIComponent(id)}`);
   }
-  listBuiltInVariables(accountId, containerId, workspaceId) { return this.request(`${this.requireWorkspace(accountId, containerId, workspaceId)}/built_in_variables`); }
-  listVersions(accountId, containerId) { return this.request(`${this.requireContainer(accountId, containerId)}/versions`); }
+  listBuiltInVariables(accountId, containerId, workspaceId, pageToken) { return this.request(`${this.requireWorkspace(accountId, containerId, workspaceId)}/built_in_variables`, {pageToken}); }
+  listVersions(accountId, containerId, pageToken) { return this.request(`${this.requireContainer(accountId, containerId)}/version_headers`, {pageToken}); }
   getLiveVersion(accountId, containerId) { return this.request(`${this.requireContainer(accountId, containerId)}/versions:live`); }
 }
