@@ -480,7 +480,7 @@ function createServer(audit = null) {
     {
       title: 'List Drupal content types',
       description:
-        'Use this when the user asks which Drupal types exist or whether trainings, landing pages or quizzes are available. Lists the complete allowlist and revision/translation flags. Do not use it to list nodes.',
+        'Use this when the user asks which Drupal types are available, including trainings, landing pages, quizzes, opinions and Wall of Love. Lists the complete allowlist and revision/translation flags. Do not use it to list nodes.',
       inputSchema: {},
       outputSchema: {
         content_types: z.array(
@@ -524,7 +524,7 @@ function createServer(audit = null) {
     {
       title: 'Get Drupal content type schema',
       description:
-        'Use this before search_content or get_content when a field machine name is unknown. Returns the dynamic field schema for npxtraining, landing_page or npxquiz. Do not guess field names.',
+        'Use this before search_content or get_content when a field machine name is unknown. Returns the dynamic field schema for any allowed type, including opinia and wall_of_love. Do not guess field names.',
       inputSchema: {
         content_type: z.string().min(1).max(64).describe('Drupal content type machine name.'),
       },
@@ -568,7 +568,7 @@ function createServer(audit = null) {
     {
       title: 'Get Drupal content',
       description:
-        'Use this when the user has a numeric NID and wants the current fields of one training, landing page or quiz. Optionally request selected field machine names. For a landing page H1 expand field_top_tytul, not title. For quiz questions expand field_questions and field_questions.field_answers. Do not use this for history or to create or edit content. Scoring fields and participant or npx_test entities are never returned.',
+        'Use this when the user has a numeric NID and wants current fields of an allowed training, landing page, quiz, opinion or Wall of Love item. Optionally request selected field machine names. For a landing page H1 expand field_top_tytul, not title. For quiz questions expand field_questions and field_questions.field_answers. For Wall of Love request field_wol_content and expand field_wol_content.field_opinion_reference. Do not use this for history or to create or edit content. Scoring fields and participant or npx_test entities are never returned.',
       inputSchema: {
         nid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER)
           .describe('Numeric Drupal node ID.'),
@@ -578,6 +578,7 @@ function createServer(audit = null) {
           .describe(
             'Explicit entity-reference field paths to expand. For a landing page H1 use field_top_tytul. '
             + 'For quiz structure use field_questions and field_questions.field_answers. '
+            + 'For Wall of Love request field_wol_content and expand field_wol_content.field_opinion_reference. '
             + 'Scoring fields and participant or npx_test entities are never returned.',
           ),
       },
@@ -1083,7 +1084,7 @@ function createServer(audit = null) {
     {
       title: 'Search Drupal content',
       description:
-        'Use this to find or list trainings, landing pages or quizzes with structured filters. '
+        'Use this to find or list allowed trainings, landing pages, quizzes, opinions or Wall of Love items with structured filters. '
         + 'Call get_content_type_schema first if the field name is unknown. If a required filter is missing, ask one short question instead of guessing. '
         + 'Never accepts SQL or raw query expressions. '
         + 'One call returns at most "limit" matches and scans at most 5000 candidate nodes. '
