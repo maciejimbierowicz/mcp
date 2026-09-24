@@ -333,6 +333,22 @@ const quizWriteShape = {
   field_show_hints: z.enum(['none', 'inline']).optional(),
 };
 
+const opinionWriteShape = {
+  field_additional_info: z.array(z.enum(['position', 'company', 'photo', 'linkedin'])).nullable().optional(),
+  field_promotions: z.boolean().nullable().optional(),
+  field_survey: entityReferenceSchema.nullable().optional(),
+  field_name: z.string().nullable().optional(),
+  field_surname: z.string().nullable().optional(),
+  field_kat_szkolenie: entityReferenceSchema.optional(),
+  field_trener: entityReferenceSchema.optional(),
+  field_ocena_wartosci_opinii: entityReferenceSchema.optional(),
+  field_image: imageReferenceSchema.nullable().optional(),
+};
+
+const wallOfLoveWriteShape = {
+  field_wol_content: z.array(paragraphWriteItemSchema).max(50).nullable().optional(),
+};
+
 const trainingWriteShape = {
   ...Object.fromEntries(trainingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
   ...Object.fromEntries(trainingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
@@ -381,10 +397,15 @@ const contentUpdatesSchema = z.object({
   ...trainingWriteShape,
   ...landingWriteShape,
   ...quizWriteShape,
+  ...opinionWriteShape,
+  ...wallOfLoveWriteShape,
 }).strict().refine(
   (value) => Object.keys(value).length > 0,
   'At least one update is required.',
 );
+const writableContentTypeSchema = z.enum([
+  'npxtraining', 'landing_page', 'npxquiz', 'opinia', 'wall_of_love',
+]);
 
 function toolError(summary, error, audit) {
   const parts = [summary];
@@ -705,7 +726,7 @@ function createServer(audit = null) {
       {
         title: 'Preview content update',
         description:
-          'Creates a non-persistent preview for an allowed content update. Training, landing page and quiz content support their declared editorial fields. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
+          'Creates a non-persistent preview for an allowed training, landing page, quiz, opinion or Wall of Love update. Drupal accepts only fields on that type’s WRITE allowlist. Preserve every existing Wall of Love Paragraph; removal is unavailable. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
           nid: z.number().int().positive(),
           expected_revision_id: z.number().int().positive(),
@@ -713,7 +734,7 @@ function createServer(audit = null) {
         },
         outputSchema: {
           nid: z.number().int(),
-          content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
+          content_type: writableContentTypeSchema,
           current_revision_id: z.number().int(),
           changes: z.array(z.record(z.string(), z.any())),
           unchanged: z.array(z.string()),
@@ -742,7 +763,7 @@ function createServer(audit = null) {
       {
         title: 'Preview bulk content update',
         description:
-          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training, landing page and quiz content support their declared editorial fields. Use every current revision ID, show every complete before/after value in the batch without summaries or truncation and ask once for explicit confirmation before calling commit_content_bulk_update.',
+          'Creates one non-persistent preview for 1-10 updates of the same allowed training, landing page, quiz, opinion or Wall of Love type after search_content. Drupal accepts only fields on that type’s WRITE allowlist. Preserve every existing Wall of Love Paragraph. Use every current revision ID, show every complete before/after value in the batch without summaries or truncation and ask once for explicit confirmation before calling commit_content_bulk_update.',
         inputSchema: {
           items: z.array(z.object({
             nid: z.number().int().positive(),
@@ -754,11 +775,11 @@ function createServer(audit = null) {
           ),
         },
         outputSchema: {
-          content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
+          content_type: writableContentTypeSchema,
           item_count: z.number().int().min(1).max(10),
           items: z.array(z.object({
             nid: z.number().int(),
-            content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
+            content_type: writableContentTypeSchema,
             current_revision_id: z.number().int(),
             changes: z.array(z.record(z.string(), z.any())),
             unchanged: z.array(z.string()),

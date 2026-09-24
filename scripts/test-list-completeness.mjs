@@ -79,7 +79,7 @@ async function collectSearch(contentType, { conditions = [], fields = ['nid'], l
 }
 
 const types = await client.get('/api/v1/content/types');
-assert(types.length === 3, 'The allowlist list is complete and has three types.');
+assert(types.length === 5, 'The allowlist list is complete and has five types.');
 
 const landings = await collectSearch('landing_page', { limit: 2 });
 assert(landings.nids.length === 8, `Expected 8 landing pages, got ${landings.nids.length}.`);

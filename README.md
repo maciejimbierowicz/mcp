@@ -21,15 +21,20 @@ When `MCP_WRITE_ENABLED=true`, it additionally exposes six restricted tools:
 - `commit_content_bulk_update`.
 
 WRITE supports `title`, `meta_title`, and `meta_description` on
-`npxtraining`, `landing_page`, and `npxquiz`. All three content types additionally
-support the editorial scalar fields declared in the preview tool schema:
+`npxtraining`, `landing_page`, `npxquiz`, `opinia`, and `wall_of_love`. Their
+separately allowlisted fields use the value types declared in the preview tool schema:
 text, formatted text values, booleans, bounded integers, numbers, and simple
-lists. Landing page and quiz `body` accept `{ value, summary? }`; omitting `summary`
+lists. Landing page, quiz, and opinion `body` accept `{ value, summary? }`; omitting `summary`
 preserves its current value, and Drupal preserves the existing text format.
 Quiz WRITE excludes questions, answers, and scoring entities.
+Opinion WRITE covers its body, author display fields, selected taxonomy
+references, image, `field_additional_info`, `field_promotions` (consent; change
+only when explicitly requested), and `field_survey`. Source e-mail and social
+links are excluded. Wall of Love WRITE covers `field_wol_content` with `par_text`
+and `wol_opinion` Paragraphs.
 It also supports explicitly allowlisted references to existing nodes,
 taxonomy terms, and reusable blocks through strict `target_id` objects.
-Three training and one quiz image field can reference existing permanent image files with
+Three training, one quiz, and one opinion image field can reference existing permanent image files with
 validated `alt` and optional `title` metadata. Thirteen training paragraph fields can
 reference existing paragraphs; revision-aware fields require both `target_id`
 and `target_revision_id`. Existing embedded paragraphs may include `bundle` and
@@ -46,11 +51,13 @@ only the one-time preview token and explicit confirmation; Drupal remains the
 authoritative permission, type validation, target validation, allowlist,
 revision-locking, and audit layer.
 
-The Drupal allowlist currently exposes `npxtraining`, `landing_page` and
-`npxquiz`. Quiz structure is read with `expand` on `field_questions` and
+The Drupal allowlist currently exposes `npxtraining`, `landing_page`,
+`npxquiz`, `opinia`, and `wall_of_love`. Quiz structure is read with `expand` on `field_questions` and
 `field_questions.field_answers`. Scoring, hints that reveal the key,
 participant records, and `npx_test` entities are omitted. Expanding a quiz
 does not solve it and does not load attempt results.
+Wall of Love content can expand `field_wol_content.field_opinion_reference` to
+read its Paragraphs and referenced opinions.
 
 The Drupal envelope and the six core READ tool payloads are documented in the Drupal
 repo file `instrukcje-zadan/drupal-chat-integration/GROW-1049_READ_API_CONTRACT.md`.
@@ -264,7 +271,7 @@ Official OpenAI split:
 
 ChatGPT developer mode pulls `instructions` and tool descriptions from this
 server. OpenAI asks that the first 512 characters of `instructions` stand
-alone; ours name the three types, the three read flows, Polish table answers,
+alone; ours name the five types, the read flows, Polish table answers,
 and completeness. Refresh the app after deploy so ChatGPT does not keep a
 stale tool list.
 

@@ -27,7 +27,7 @@ async function expectError(operation, status, code) {
 }
 
 const types = await client.get('/api/v1/content/types');
-assert(types.length === 3, 'READ allowlist must stay at three types.');
+assert(types.length === 5, 'READ allowlist must expose five types.');
 
 const quiz = await client.get('/api/v1/content/1138?fields=title,field_questions&expand=field_questions');
 assert(quiz.nid === 1138, 'Quiz expand fixture must still load.');
