@@ -28,9 +28,10 @@ lists. Landing page, quiz, and opinion `body` accept `{ value, summary? }`; omit
 preserves its current value, and Drupal preserves the existing text format.
 Quiz WRITE excludes questions, answers, and scoring entities.
 Opinion WRITE covers its body, author display fields, selected taxonomy
-references, image, `field_additional_info`, `field_promotions` (consent; change
-only when explicitly requested), and `field_survey`. Source e-mail and social
-links are excluded. Wall of Love WRITE covers `field_wol_content` with `par_text`
+references, image, `field_additional_info`, `field_promotions` (consent/display
+controls; change only when explicitly requested), `field_survey`, LinkedIn,
+GoldenLine, and publication status. Source e-mail remains excluded. Wall of
+Love WRITE covers `field_wol_content` with `par_text`
 and `wol_opinion` Paragraphs.
 It also supports explicitly allowlisted references to existing nodes,
 taxonomy terms, and reusable blocks through strict `target_id` objects.
@@ -45,8 +46,8 @@ remain in an update list when adding, editing, or reordering.
 New images and files use a destination-bound,
 10-minute browser upload link, followed by status verification and the normal
 preview/confirmation flow. `field_program_szkolenia` accepts up to two files;
-writable Paragraph image/file fields also accept uploads. Publication state and
-technical integration identifiers remain excluded. Preview never saves. Commit accepts
+writable Paragraph image/file fields also accept uploads. Publication state
+outside Opinion and technical integration identifiers remain excluded. Preview never saves. Commit accepts
 only the one-time preview token and explicit confirmation; Drupal remains the
 authoritative permission, type validation, target validation, allowlist,
 revision-locking, and audit layer.
