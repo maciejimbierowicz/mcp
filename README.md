@@ -59,6 +59,19 @@ does not solve it and does not load attempt results.
 Wall of Love content can expand `field_wol_content.field_opinion_reference` to
 read its Paragraphs and referenced opinions.
 
+`search_registrations` is a separate READ-only tool for the fixed participant
+and registration projection. Grant the Drupal technical READ account the
+`mcp_registrations_reader` role after importing the Drupal configuration; the
+general content-reader role alone cannot see participants. Search by email,
+name, company, training ID/title and inclusive training-date range; follow
+`next_after` with the same filters until `has_more` is false. Each row is a
+participant in one submission. `pricing.submission_total_net` and
+`pricing.submission_total_discounted_net` belong to that submission, so sum
+them once per `submission_id` even if it has several participants or appears
+on multiple pages. `pricing.base_unit_net` is the base per-person price, not
+the final discounted price assigned to that person. No registration status or
+payment confirmation is inferred.
+
 The Drupal envelope and the six core READ tool payloads are documented in the Drupal
 repo file `instrukcje-zadan/drupal-chat-integration/GROW-1049_READ_API_CONTRACT.md`.
 Success is `{ data }`. Failures are `{ error: { status, code, message } }`.

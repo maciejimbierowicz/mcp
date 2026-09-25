@@ -11,6 +11,7 @@ import { SERVER_INSTRUCTIONS } from './chatgpt-behavior.mjs';
 import { DrupalApiError, DrupalClient } from './drupal-client.mjs';
 import { GtmClient } from './gtm-client.mjs';
 import { registerGtmTools } from './gtm-tools.mjs';
+import { registerRegistrationTools } from './registration-tools.mjs';
 import {
   createSemaphore,
   createTokenBucket,
@@ -636,6 +637,13 @@ function createServer(audit = null) {
         return toolError('Could not read Drupal content.', error, audit);
       }
     },
+  );
+
+  registerRegistrationTools(
+    server,
+    drupalClient,
+    (error) => toolError('Could not read registrations.', error, audit),
+    (fn) => runHeavyTool('Could not read registrations.', audit, fn),
   );
 
   if (drupalWriteClient) {
