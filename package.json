@@ -10,7 +10,7 @@
   "scripts": {
     "auth:gtm": "node scripts/auth-gtm.mjs",
     "start": "node --env-file=.env src/server.mjs",
-    "check": "node --check src/server.mjs && node --check src/config.mjs && node --check src/auth.mjs && node --check src/drupal-client.mjs && node --check src/chatgpt-behavior.mjs && node --check src/limits.mjs && node --check src/gtm-client.mjs && node --check src/gtm-tools.mjs && node --check scripts/test-gtm.mjs && node --check scripts/test-write.mjs",
+    "check": "node --check src/server.mjs && node --check src/config.mjs && node --check src/auth.mjs && node --check src/drupal-client.mjs && node --check src/chatgpt-behavior.mjs && node --check src/registration-tools.mjs && node --check src/limits.mjs && node --check src/gtm-client.mjs && node --check src/gtm-tools.mjs && node --check scripts/test-gtm.mjs && node --check scripts/test-write.mjs",
     "test:list": "node --env-file=.env scripts/test-list-content-types.mjs",
     "test:schema": "node --env-file=.env scripts/test-get-content-type-schema.mjs",
     "test:content": "node --env-file=.env scripts/test-get-content.mjs",
@@ -24,6 +24,7 @@
     "test:gtm": "node scripts/test-gtm.mjs",
     "test:list-completeness": "node --env-file=.env scripts/test-list-completeness.mjs",
     "test:chatgpt-behavior": "node scripts/test-chatgpt-behavior.mjs",
+    "test:registrations": "node scripts/test-registrations.mjs",
     "test:mcp-limits": "node scripts/test-mcp-limits.mjs",
     "test:hardening": "node --env-file=.env scripts/test-hardening.mjs",
     "test:write": "node --env-file=.env scripts/test-write.mjs"

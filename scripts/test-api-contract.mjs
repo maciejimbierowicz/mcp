@@ -30,10 +30,10 @@ async function expectError(operation, status, code, fragment) {
 }
 
 const types = await client.get('/api/v1/content/types');
-assert(Array.isArray(types) && types.length === 3, 'Allowlist must expose exactly three types.');
+assert(Array.isArray(types) && types.length === 5, 'Allowlist must expose exactly five types.');
 assert(
-  types.map((item) => item.machine_name).join(',') === 'npxtraining,landing_page,npxquiz',
-  'Allowlist order must stay npxtraining, landing_page, npxquiz.',
+  types.map((item) => item.machine_name).join(',') === 'npxtraining,landing_page,npxquiz,opinia,wall_of_love',
+  'Allowlist order must include opinia and wall_of_love after the existing types.',
 );
 
 const schema = await client.get('/api/v1/content/types/npxquiz/schema');

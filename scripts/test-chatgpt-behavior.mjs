@@ -48,6 +48,9 @@ for (const token of [
   'preview_content_bulk_update',
   'commit_content_bulk_update',
   'get_content_write_audit',
+  'opinia',
+  'wall_of_love',
+  'field_wol_content.field_opinion_reference',
   'every before and after value completely and exactly',
   'do not ask for confirmation until the full exact diff is visible',
 ]) {
@@ -98,6 +101,19 @@ for (const field of ['field_grafika_naglowka', 'field_quiz_image']) {
   assert(!quizWriteSource.includes(field), 'Unused quiz field must remain excluded from WRITE: ' + field);
 }
 
+const opinionWriteStart = serverSource.indexOf('const opinionWriteShape');
+const wallOfLoveWriteStart = serverSource.indexOf('const wallOfLoveWriteShape');
+assert(opinionWriteStart >= 0 && wallOfLoveWriteStart > opinionWriteStart, 'Opinion and Wall of Love WRITE schemas must exist.');
+const opinionWriteSource = serverSource.slice(opinionWriteStart, wallOfLoveWriteStart);
+for (const field of ['field_name', 'field_surname', 'field_kat_szkolenie', 'field_trener', 'field_ocena_wartosci_opinii', 'field_image', 'field_additional_info', 'field_promotions', 'field_survey']) {
+  assert(opinionWriteSource.includes(field), 'Opinion WRITE schema must include "' + field + '".');
+}
+for (const field of ['field_bonus_email', 'field_linkedin_link', 'field_goldenline_link']) {
+  assert(!opinionWriteSource.includes(field), 'Unsupported Opinion field must remain outside WRITE: ' + field);
+}
+assert(serverSource.includes('field_wol_content: z.array(paragraphWriteItemSchema)'), 'Wall of Love must use the existing Paragraph WRITE schema.');
+assert(serverSource.includes("'opinia', 'wall_of_love'"), 'WRITE preview output must support both new bundles.');
+
 const prompts = readFileSync(join(root, 'prompts/chatgpt-read-regression.md'), 'utf8');
 for (const heading of [
   'Pytanie o dane',
@@ -111,15 +127,18 @@ for (const heading of [
 }
 
 const useThis = [
-  'Use this when the user asks which Drupal types exist',
+  'Use this when the user asks which Drupal types are available',
   'Use this before search_content or get_content',
   'Use this when the user has a numeric NID',
   'Use this when the user asks when a value changed',
   'Use this to read one known revision',
-  'Use this to find or list trainings',
+  'Use this to find or list allowed trainings',
 ];
 for (const fragment of useThis) {
   assert(serverSource.includes(fragment), `Tool descriptions must include "${fragment}".`);
+}
+for (const fragment of ['opinia', 'wall_of_love', 'field_wol_content.field_opinion_reference']) {
+  assert(serverSource.includes(fragment), `READ tool descriptions must mention "${fragment}".`);
 }
 
 console.log(JSON.stringify({

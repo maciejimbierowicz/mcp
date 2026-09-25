@@ -11,6 +11,7 @@ import { SERVER_INSTRUCTIONS } from './chatgpt-behavior.mjs';
 import { DrupalApiError, DrupalClient } from './drupal-client.mjs';
 import { GtmClient } from './gtm-client.mjs';
 import { registerGtmTools } from './gtm-tools.mjs';
+import { registerRegistrationTools } from './registration-tools.mjs';
 import {
   createSemaphore,
   createTokenBucket,
@@ -333,6 +334,22 @@ const quizWriteShape = {
   field_show_hints: z.enum(['none', 'inline']).optional(),
 };
 
+const opinionWriteShape = {
+  field_additional_info: z.array(z.enum(['position', 'company', 'photo', 'linkedin'])).nullable().optional(),
+  field_promotions: z.boolean().nullable().optional(),
+  field_survey: entityReferenceSchema.nullable().optional(),
+  field_name: z.string().nullable().optional(),
+  field_surname: z.string().nullable().optional(),
+  field_kat_szkolenie: entityReferenceSchema.optional(),
+  field_trener: entityReferenceSchema.optional(),
+  field_ocena_wartosci_opinii: entityReferenceSchema.optional(),
+  field_image: imageReferenceSchema.nullable().optional(),
+};
+
+const wallOfLoveWriteShape = {
+  field_wol_content: z.array(paragraphWriteItemSchema).max(50).nullable().optional(),
+};
+
 const trainingWriteShape = {
   ...Object.fromEntries(trainingTextWriteFields.map((field) => [field, z.string().nullable().optional()])),
   ...Object.fromEntries(trainingBooleanWriteFields.map((field) => [field, z.boolean().nullable().optional()])),
@@ -381,10 +398,15 @@ const contentUpdatesSchema = z.object({
   ...trainingWriteShape,
   ...landingWriteShape,
   ...quizWriteShape,
+  ...opinionWriteShape,
+  ...wallOfLoveWriteShape,
 }).strict().refine(
   (value) => Object.keys(value).length > 0,
   'At least one update is required.',
 );
+const writableContentTypeSchema = z.enum([
+  'npxtraining', 'landing_page', 'npxquiz', 'opinia', 'wall_of_love',
+]);
 
 function toolError(summary, error, audit) {
   const parts = [summary];
@@ -480,7 +502,7 @@ function createServer(audit = null) {
     {
       title: 'List Drupal content types',
       description:
-        'Use this when the user asks which Drupal types exist or whether trainings, landing pages or quizzes are available. Lists the complete allowlist and revision/translation flags. Do not use it to list nodes.',
+        'Use this when the user asks which Drupal types are available, including trainings, landing pages, quizzes, opinions and Wall of Love. Lists the complete allowlist and revision/translation flags. Do not use it to list nodes.',
       inputSchema: {},
       outputSchema: {
         content_types: z.array(
@@ -524,7 +546,7 @@ function createServer(audit = null) {
     {
       title: 'Get Drupal content type schema',
       description:
-        'Use this before search_content or get_content when a field machine name is unknown. Returns the dynamic field schema for npxtraining, landing_page or npxquiz. Do not guess field names.',
+        'Use this before search_content or get_content when a field machine name is unknown. Returns the dynamic field schema for any allowed type, including opinia and wall_of_love. Do not guess field names.',
       inputSchema: {
         content_type: z.string().min(1).max(64).describe('Drupal content type machine name.'),
       },
@@ -568,7 +590,7 @@ function createServer(audit = null) {
     {
       title: 'Get Drupal content',
       description:
-        'Use this when the user has a numeric NID and wants the current fields of one training, landing page or quiz. Optionally request selected field machine names. For a landing page H1 expand field_top_tytul, not title. For quiz questions expand field_questions and field_questions.field_answers. Do not use this for history or to create or edit content. Scoring fields and participant or npx_test entities are never returned.',
+        'Use this when the user has a numeric NID and wants current fields of an allowed training, landing page, quiz, opinion or Wall of Love item. Optionally request selected field machine names. For a landing page H1 expand field_top_tytul, not title. For quiz questions expand field_questions and field_questions.field_answers. For Wall of Love request field_wol_content and expand field_wol_content.field_opinion_reference. Do not use this for history or to create or edit content. Scoring fields and participant or npx_test entities are never returned.',
       inputSchema: {
         nid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER)
           .describe('Numeric Drupal node ID.'),
@@ -578,6 +600,7 @@ function createServer(audit = null) {
           .describe(
             'Explicit entity-reference field paths to expand. For a landing page H1 use field_top_tytul. '
             + 'For quiz structure use field_questions and field_questions.field_answers. '
+            + 'For Wall of Love request field_wol_content and expand field_wol_content.field_opinion_reference. '
             + 'Scoring fields and participant or npx_test entities are never returned.',
           ),
       },
@@ -614,6 +637,13 @@ function createServer(audit = null) {
         return toolError('Could not read Drupal content.', error, audit);
       }
     },
+  );
+
+  registerRegistrationTools(
+    server,
+    drupalClient,
+    (error) => toolError('Could not read registrations.', error, audit),
+    (fn) => runHeavyTool('Could not read registrations.', audit, fn),
   );
 
   if (drupalWriteClient) {
@@ -704,7 +734,7 @@ function createServer(audit = null) {
       {
         title: 'Preview content update',
         description:
-          'Creates a non-persistent preview for an allowed content update. Training, landing page and quiz content support their declared editorial fields. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
+          'Creates a non-persistent preview for an allowed training, landing page, quiz, opinion or Wall of Love update. Drupal accepts only fields on that type’s WRITE allowlist. Preserve every existing Wall of Love Paragraph; removal is unavailable. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
           nid: z.number().int().positive(),
           expected_revision_id: z.number().int().positive(),
@@ -712,7 +742,7 @@ function createServer(audit = null) {
         },
         outputSchema: {
           nid: z.number().int(),
-          content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
+          content_type: writableContentTypeSchema,
           current_revision_id: z.number().int(),
           changes: z.array(z.record(z.string(), z.any())),
           unchanged: z.array(z.string()),
@@ -741,7 +771,7 @@ function createServer(audit = null) {
       {
         title: 'Preview bulk content update',
         description:
-          'Creates one non-persistent preview for 1-10 updates of the same allowed content type after search_content. Training, landing page and quiz content support their declared editorial fields. Use every current revision ID, show every complete before/after value in the batch without summaries or truncation and ask once for explicit confirmation before calling commit_content_bulk_update.',
+          'Creates one non-persistent preview for 1-10 updates of the same allowed training, landing page, quiz, opinion or Wall of Love type after search_content. Drupal accepts only fields on that type’s WRITE allowlist. Preserve every existing Wall of Love Paragraph. Use every current revision ID, show every complete before/after value in the batch without summaries or truncation and ask once for explicit confirmation before calling commit_content_bulk_update.',
         inputSchema: {
           items: z.array(z.object({
             nid: z.number().int().positive(),
@@ -753,11 +783,11 @@ function createServer(audit = null) {
           ),
         },
         outputSchema: {
-          content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
+          content_type: writableContentTypeSchema,
           item_count: z.number().int().min(1).max(10),
           items: z.array(z.object({
             nid: z.number().int(),
-            content_type: z.enum(['npxtraining', 'landing_page', 'npxquiz']),
+            content_type: writableContentTypeSchema,
             current_revision_id: z.number().int(),
             changes: z.array(z.record(z.string(), z.any())),
             unchanged: z.array(z.string()),
@@ -1083,7 +1113,7 @@ function createServer(audit = null) {
     {
       title: 'Search Drupal content',
       description:
-        'Use this to find or list trainings, landing pages or quizzes with structured filters. '
+        'Use this to find or list allowed trainings, landing pages, quizzes, opinions or Wall of Love items with structured filters. '
         + 'Call get_content_type_schema first if the field name is unknown. If a required filter is missing, ask one short question instead of guessing. '
         + 'Never accepts SQL or raw query expressions. '
         + 'One call returns at most "limit" matches and scans at most 5000 candidate nodes. '
