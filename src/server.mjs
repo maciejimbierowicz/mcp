@@ -170,6 +170,10 @@ const trainingMultiTextWriteFields = [
 const entityReferenceSchema = z.object({
   target_id: z.number().int().positive(),
 }).strict();
+const linkReferenceSchema = z.object({
+  uri: z.string().trim().min(1).max(2048),
+  title: z.string().max(255).nullable().optional(),
+}).strict();
 const uploadTokenSchema = z.string().regex(/^[a-f0-9]{64}$/);
 const imageMetadataShape = {
   alt: z.string().max(512),
@@ -335,8 +339,11 @@ const quizWriteShape = {
 };
 
 const opinionWriteShape = {
+  status: z.boolean().optional(),
   field_additional_info: z.array(z.enum(['position', 'company', 'photo', 'linkedin'])).nullable().optional(),
   field_promotions: z.boolean().nullable().optional(),
+  field_linkedin_link: linkReferenceSchema.nullable().optional(),
+  field_goldenline_link: linkReferenceSchema.nullable().optional(),
   field_survey: entityReferenceSchema.nullable().optional(),
   field_name: z.string().nullable().optional(),
   field_surname: z.string().nullable().optional(),
