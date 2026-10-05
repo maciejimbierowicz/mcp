@@ -12,6 +12,7 @@ import { DrupalApiError, DrupalClient } from './drupal-client.mjs';
 import { GtmClient } from './gtm-client.mjs';
 import { registerGtmTools } from './gtm-tools.mjs';
 import { registerRegistrationTools } from './registration-tools.mjs';
+import { registerTermTools } from './term-tools.mjs';
 import {
   createSemaphore,
   createTokenBucket,
@@ -597,7 +598,7 @@ function createServer(audit = null) {
     {
       title: 'Get Drupal content',
       description:
-        'Use this when the user has a numeric NID and wants current fields of an allowed training, landing page, quiz, opinion or Wall of Love item. Optionally request selected field machine names. For a landing page H1 expand field_top_tytul, not title. For quiz questions expand field_questions and field_questions.field_answers. For Wall of Love request field_wol_content and expand field_wol_content.field_opinion_reference. Do not use this for history or to create or edit content. Scoring fields and participant or npx_test entities are never returned.',
+        'Use this when the user has a numeric NID and wants current fields of an allowed training, training date (npxtraining_date, READ only), landing page, quiz, opinion or Wall of Love item. Optionally request selected field machine names. For a landing page H1 expand field_top_tytul, not title. For quiz questions expand field_questions and field_questions.field_answers. For Wall of Love request field_wol_content and expand field_wol_content.field_opinion_reference. Do not use this for history or to create or edit content. Scoring fields and participant or npx_test entities are never returned.',
       inputSchema: {
         nid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER)
           .describe('Numeric Drupal node ID.'),
@@ -644,6 +645,13 @@ function createServer(audit = null) {
         return toolError('Could not read Drupal content.', error, audit);
       }
     },
+  );
+
+  registerTermTools(
+    server,
+    drupalClient,
+    (error) => toolError('Could not read training date availability.', error, audit),
+    (fn) => runHeavyTool('Could not read training date availability.', audit, fn),
   );
 
   registerRegistrationTools(
