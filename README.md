@@ -52,13 +52,46 @@ only the one-time preview token and explicit confirmation; Drupal remains the
 authoritative permission, type validation, target validation, allowlist,
 revision-locking, and audit layer.
 
-The Drupal allowlist currently exposes `npxtraining`, `landing_page`,
-`npxquiz`, `opinia`, and `wall_of_love`. Quiz structure is read with `expand` on `field_questions` and
-`field_questions.field_answers`. Scoring, hints that reveal the key,
-participant records, and `npx_test` entities are omitted. Expanding a quiz
-does not solve it and does not load attempt results.
+The Drupal allowlist currently exposes `npxtraining`, `npxtraining_date`,
+`landing_page`, `npxquiz`, `followup`, `opinia`, and `wall_of_love`.
+Training dates and follow-ups are READ only. Quiz structure is read with `expand`
+on `field_questions` and `field_questions.field_answers`. Answers expose
+`field_points`, `field_points_unchecked`, `field_checked_text` and
+`field_unchecked_text` for audits. Participant records and `npx_test` entities
+are omitted. Expanding a quiz does not load attempt results.
 Wall of Love content can expand `field_wol_content.field_opinion_reference` to
 read its Paragraphs and referenced opinions.
+
+### Follow-up audits (GROW-1051)
+
+Use the existing READ tools; no export endpoint is needed. List both `followup`
+and `npxquiz`, including unpublished content, and keep following `next_after_nid`
+until `has_more=false`. Fetch each material with `get_content` and the necessary
+expansion paths. Drupal provides the raw data; a ChatGPT session with file
+generation available can turn fetched rows into CSV or Excel.
+
+For follow-ups include `body` (intro and summary), `field_zawartosc` (main body),
+`field_zajawka`, title, status and `url_alias`. Expand `field_kategoria` to obtain
+category IDs, labels and the `field_link_do_szkolenia` fallback link. Match category
+IDs against trainings' `field_kategoria_followup` for category-based training
+relationships; preserve multiple matches and distinguish fallback links from
+node references. Prepend the Drupal site's base URL to `url_alias`, not the MCP
+server URL. An unpublished node's URL is not necessarily publicly accessible.
+
+For quizzes also request `field_questions`, `field_results`, `field_is_testquiz`
+and `field_show_hints`, expanding `field_questions.field_answers`. Preserve the
+material NID, question/answer IDs and order so separate CSVs can be joined. Keep
+raw scores and both feedback texts. A competence test need not have one correct
+answer; do not invent a correct-answer key from arbitrary scores.
+
+Check `truncated`, `fields_truncated` and `expansion_status` recursively. Missing
+questions retain their ID and are reported as unavailable; do not turn these
+into empty text or claim a gap-free export. Current Drupal limits allow 250
+expanded entities and 1500 fields; HTTP/MCP response limits still apply.
+
+Deploy the matching Drupal `GROW-1051` first (`drush updatedb -y`, `drush cr`)
+so update 10023 enables follow-up READ for the existing MCP reader role. Then
+deploy this MCP branch and refresh the connected app/tools before a new session.
 
 `search_registrations` is a separate READ-only tool for the fixed participant
 and registration projection. Grant the Drupal technical READ account the
