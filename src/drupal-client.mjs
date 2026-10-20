@@ -98,13 +98,15 @@ export class DrupalClient {
       const apiMessage = payload?.error?.message;
       const apiCode = payload?.error?.code;
       const apiRetryAfter = payload?.error?.retry_after;
+      const retryHeader = response.headers.get('retry-after');
+      const headerRetryAfter = /^\d+$/.test(retryHeader ?? '') ? Number(retryHeader) : null;
       throw new DrupalApiError(
         typeof apiMessage === 'string'
           ? apiMessage
           : `Drupal API returned HTTP ${response.status}.`,
         response.status,
         typeof apiCode === 'string' ? apiCode : null,
-        Number.isInteger(apiRetryAfter) ? apiRetryAfter : null,
+        Number.isInteger(apiRetryAfter) ? apiRetryAfter : headerRetryAfter,
       );
     }
 

@@ -11,12 +11,14 @@ Content API:
 - `search_content`,
 - `get_content_write_audit`.
 
-When `MCP_WRITE_ENABLED=true`, it additionally exposes six restricted tools:
+When `MCP_WRITE_ENABLED=true`, it additionally exposes eight restricted tools:
 
 - `create_content_upload`,
 - `get_content_upload_status`,
 - `preview_content_update`,
 - `commit_content_update`,
+- `preview_content_create`,
+- `commit_content_create`,
 - `preview_content_bulk_update`,
 - `commit_content_bulk_update`.
 
@@ -130,6 +132,34 @@ WRITE is disabled by default. To enable it for testing, set
 `MCP_WRITE_ENABLED=true` and provide `DRUPAL_WRITE_USERNAME` and
 `DRUPAL_WRITE_PASSWORD` for a separate minimal Drupal account. Never reuse the
 READ account or grant the WRITE account administrative permissions.
+
+New content can be created only for `wall_of_love`, using
+`preview_content_create` followed by explicit user confirmation and
+`commit_content_create`. The WRITE account additionally needs the dedicated
+Drupal permission `create npx content api`; this change grants it to nobody.
+Drupal audit schema update `10025` must be applied before CREATE commit.
+
+Preview accepts `{ content_type: "wall_of_love", fields: { title,
+field_wol_content? } }`. Content is an ordered list of new paragraphs:
+`{ bundle: "par_text", fields: { field_par_text: "<p>Safe HTML</p>" } }` or
+`{ bundle: "wol_opinion", fields: { field_opinion_reference: { target_id: 123 } } }`.
+Only existing opinion NIDs may be referenced. Paragraph IDs, other fields,
+other types, uploads and publication flags are rejected. The full preview
+includes defaults, HTML format, unpublished status and the generated alias.
+Show it in full before confirmation. The token is user-bound and expires after
+10 minutes; it cannot be used by an UPDATE commit.
+
+Commit accepts only `{ preview_token, confirmed: true }` and returns
+`{ status: "committed", result, error: null }` with the real NID, URL, alias,
+revision and audit IDs. The new node stays unpublished. Drupal checks that the
+saved values match preview and rolls back all writes on failure. Token reuse
+and alias conflicts fail; never silently change a title/alias or retry creation
+after a timeout without first checking READ/audit. Rate-limited commits return
+`status: "blocked"`, including `retry_after`, without automatic retries.
+The audit tool accepts `operation: "create"` and `old_revision_id: null`.
+
+Run `npm run test:create` for a local MCP protocol test against a fake Drupal
+HTTP API (no credentials, external requests or persistent content required).
 
 Single updates use `preview_content_update` and
 `commit_content_update`. Batches of 1-10 unique items of one allowed content type use
@@ -308,7 +338,7 @@ that HTML tags are missing.
 - The inbound MCP token is a single application key, not a human identity.
   Whoever holds it can call every tool enabled on that MCP server. Keep it on the approved ChatGPT
   connector only. Drupal Basic auth is a separate service account.
-- Seven READ tools are annotated as read-only and non-destructive. Six WRITE
+- Seven READ tools are annotated as read-only and non-destructive. Eight WRITE
   tools are exposed only when `MCP_WRITE_ENABLED=true` and are marked as writes.
 - Drupal independently enforces its bundle allowlist, entity access, role, and
   permission.
