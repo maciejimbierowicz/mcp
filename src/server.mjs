@@ -13,6 +13,7 @@ import { GtmClient } from './gtm-client.mjs';
 import { registerGtmTools } from './gtm-tools.mjs';
 import { registerRegistrationTools } from './registration-tools.mjs';
 import { registerTermTools } from './term-tools.mjs';
+import { registerCreateTools } from './create-tools.mjs';
 import {
   createSemaphore,
   createTokenBucket,
@@ -662,6 +663,13 @@ function createServer(audit = null) {
   );
 
   if (drupalWriteClient) {
+    registerCreateTools(
+      server,
+      drupalWriteClient,
+      (error) => toolError('Could not preview Wall of Love creation.', error, audit),
+      (error) => controlledWriteError('Could not create Wall of Love.', error, audit),
+    );
+
     server.registerTool(
       'create_content_upload',
       {
@@ -934,7 +942,8 @@ function createServer(audit = null) {
           audit_id: z.number().int(),
           technical_uid: z.number().int(),
           nid: z.number().int(),
-          old_revision_id: z.number().int(),
+          operation: z.enum(['update', 'create']).optional(),
+          old_revision_id: z.number().int().nullable(),
           new_revision_id: z.number().int(),
           timestamp: z.number().int(),
           changed_fields: z.array(z.string()),
