@@ -158,9 +158,6 @@ after a timeout without first checking READ/audit. Rate-limited commits return
 `status: "blocked"`, including `retry_after`, without automatic retries.
 The audit tool accepts `operation: "create"` and `old_revision_id: null`.
 
-Run `npm run test:create` for a local MCP protocol test against a fake Drupal
-HTTP API (no credentials, external requests or persistent content required).
-
 Single updates use `preview_content_update` and
 `commit_content_update`. Batches of 1-10 unique items of one allowed content type use
 `preview_content_bulk_update` and `commit_content_bulk_update`. A bulk
