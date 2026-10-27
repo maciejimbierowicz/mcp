@@ -599,8 +599,9 @@ function createServer(audit = null) {
     {
       title: 'Get Drupal content',
       description:
-        'Use this when the user has a numeric NID and wants current fields of an allowed training, training date (npxtraining_date, READ only), follow-up (followup, READ only), landing page, quiz, opinion or Wall of Love item. Optionally request selected field machine names. For a landing page H1 expand field_top_tytul, not title. For quiz questions expand field_questions and field_questions.field_answers to read answers, scores and checked/unchecked feedback. For follow-ups read body, field_zawartosc and field_zajawka; expand field_kategoria for categories and their fallback training links. Check truncation and unavailable references before claiming completeness. For Wall of Love request field_wol_content and expand field_wol_content.field_opinion_reference. Do not use this for history or to create or edit content. Participant or npx_test entities are never returned.',
+        'Use this when the user has a numeric NID and wants current fields of an allowed training, training date (npxtraining_date, READ only), follow-up (followup, READ only), landing page, quiz, opinion or Wall of Love item. Optionally request selected field machine names. For opinia, request indexing (also included when fields is omitted) for published, url_alias, absolute url, anonymous_node_access, sitemap, robots, canonical, rabbit_hole and redirects settings. rabbit_hole shows stored fields, inherited configured_action, anonymous action, source, redirect target/status_code/fallback. redirects.outgoing lists active source rules for the opinion alias and node path; incoming lists rules leading to this opinion and does not mean the opinion redirects elsewhere. Lists are complete only when has_more=false. matches resolves active rules/chains for clean paths without query and reports matched/no_rule/loop. Query-dependent rules may be listed without matching the clean URL; language-specific and language-neutral rules are considered. Pass check_public=true to additionally check anonymous HTTP, X-Robots-Tag, HTML canonical/meta robots, public robots.txt groups and generated sitemap XML membership. Results are in public_check with checked_at. The ordinary read has public_check.status=not_checked. Public checks are bounded; failures/partial checks leave sitemap presence unknown, not false. robots_txt returns rules_only groups, not an automatic bot-specific verdict. External redirects are reported without fetching their destinations. Configuration values and public observations may differ due to cache or server rules. indexing.robots and indexing.canonical separate stored overrides, inherited templates and computed value, with source and source_config. Tokens use the clean opinion URL and anonymous visitor context, never API query parameters. robots includes all directives and meta-only indexing/following interpretation with directive or implicit_default basis; this does not prove overall indexability. metatag_enabled reflects enabled global Metatag defaults. Existing fields.canonical remains a stored override. sitemap.variants contains id, label, enabled (variant), index (opinion inclusion setting), priority, changefreq, include_images and source (opinion/content_type/module_default/unavailable). Empty changefreq is null. sitemap.available=false means the module is unavailable, not that the opinion is excluded. xml_presence=not_checked: inclusion settings do not prove presence in generated XML or Google indexing. Anonymous node access does not yet account for Rabbit Hole, redirects or robots. Indexing is unavailable in revision reads and other content types. For a landing page H1 expand field_top_tytul, not title. For quiz questions expand field_questions and field_questions.field_answers to read answers, scores and checked/unchecked feedback. For follow-ups read body, field_zawartosc and field_zajawka; expand field_kategoria for categories and their fallback training links. Check truncation and unavailable references before claiming completeness. For Wall of Love request field_wol_content and expand field_wol_content.field_opinion_reference. Do not use this for history or to create or edit content. Participant or npx_test entities are never returned.',
       inputSchema: {
+        check_public: z.boolean().optional().describe('For opinia with indexing included, optionally perform bounded anonymous HTTP, HTML, robots.txt and generated sitemap checks. Default false. Failures and partial results do not prove exclusion. robots.txt returns user-agent groups for interpretation.'),
         nid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER)
           .describe('Numeric Drupal node ID.'),
         fields: z.array(z.string().min(1).max(128)).max(200).optional()
@@ -620,7 +621,7 @@ function createServer(audit = null) {
         openWorldHint: false,
       },
     },
-    async ({ nid, fields, expand }) => {
+    async ({ nid, fields, expand, check_public }) => {
       try {
         const query = new URLSearchParams();
         if (fields !== undefined) {
@@ -628,6 +629,9 @@ function createServer(audit = null) {
         }
         if (expand !== undefined) {
           query.set('expand', expand.join(','));
+        }
+        if (check_public !== undefined) {
+          query.set('check_public', String(check_public));
         }
         const suffix = query.size > 0 ? `?${query.toString()}` : '';
         const content = await drupalClient.get(`/api/v1/content/${nid}${suffix}`);
