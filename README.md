@@ -428,7 +428,7 @@ by default, requires the Ranking READ provider, and never falls back to READ or
 
 Four additional tools: `ranking_get_content_write_schema`,
 `ranking_preview_content_update`, `ranking_commit_content_update`, and
-`ranking_get_content_write_audit`. All target existing company_profile nodes.
+`ranking_get_content_write_audit`. They target existing company_profile nodes and simple npx_training fields (see below).
 Schema exposes 30 business fields and actual bounded taxonomy choices (including
 Views-based selection). Native booleans include VAT and partner/acceptance flags;
 ratings/counters are writable. Address, text/summary, links, references and three
@@ -450,3 +450,33 @@ passed using disposable profiles/accounts, plus 228 earlier READ regression
 checks. Existing site trainer deletion has a reload-after-delete bug; fixture
 cleanup used an in-memory test-only replacement for that delete callback. No
 application hook was changed or skipped during actual WRITE operations.
+
+## Training WRITE — checkpoint 1
+
+Existing four Ranking WRITE tools now support simple npx_training fields.
+Use `ranking_get_content_write_schema` with `content_type: "npx_training"` to
+discover 36 fields, their types/allowed list values and real reference choices.
+Omitting content_type preserves the company schema default. Preview/commit/audit
+keep their existing names/paths and the same explicit-confirmation protocol.
+Training access additionally requires `write ranking training api` and normal
+node/field view/update permissions. Company-only permission does not grant it.
+WRITE credentials and RANKING_WRITE_ENABLED stay separate and disabled by default.
+
+The schema includes hidden/legacy business fields, stored prices/flags and direct
+text program. No training Paragraph updates yet (visible title, description and
+structured program follow in later checkpoints); no dates/products/variants,
+publish, author, create/delete or upload. Do not use npxtraining/4GROW field names.
+Existing company/room/discount IDs must come from READ/search/expand; those choices
+are not enumerated and are marked incomplete. Taxonomy choices use the actual
+selection handler and may also be truncated.
+
+Restricted training saves affect only explicitly supplied fields on that node.
+They do not cascade VAT to the company/siblings, delete empty Paragraphs, or
+implicitly recalculate net/gross/hourly values. Show all intended related fields
+in one preview and wait for confirmation. The backend npx_training integration
+guard must be deployed together with the API module. Old and unchanged nested
+Paragraph/image content is preserved while Drupal advances revision pointers.
+
+Acceptance: 121 training API + 19 actual MCP checks; regressions 74 company API +
+19 company MCP + 228 READ passed. Fixtures removed. No Oracle WRITE activation
+or production deployment in this checkpoint.

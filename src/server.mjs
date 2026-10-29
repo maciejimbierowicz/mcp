@@ -518,8 +518,8 @@ function createServer(audit = null) {
 
   if (rankingWriteClient) {
     registerRankingWriteTools(server, rankingWriteClient,
-      (error) => toolError('Could not complete Ranking company operation.', error, audit),
-      (fn) => runHeavyTool('Could not complete Ranking company operation.', audit, fn));
+      (error) => toolError('Could not complete Ranking content operation.', error, audit),
+      (fn) => runHeavyTool('Could not complete Ranking content operation.', audit, fn));
   }
 
   if (gtmClient) {
