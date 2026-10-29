@@ -13,6 +13,7 @@ import { GtmClient } from './gtm-client.mjs';
 import { registerGtmTools } from './gtm-tools.mjs';
 import { registerRegistrationTools } from './registration-tools.mjs';
 import { registerTermTools } from './term-tools.mjs';
+import { registerRankingTools } from './ranking-tools.mjs';
 import { registerCreateTools } from './create-tools.mjs';
 import {
   createSemaphore,
@@ -28,6 +29,9 @@ const drupalClient = new DrupalClient({
   timeoutMs: config.drupalTimeoutMs,
   maxResponseBytes: config.maxResponseBytes,
 });
+const rankingClient = config.ranking ? new DrupalClient({
+  ...config.ranking, maxResponseBytes: config.maxResponseBytes,
+}) : null;
 const drupalWriteClient = config.writeEnabled
   ? new DrupalClient({
     baseUrl: config.drupalBaseUrl,
@@ -501,6 +505,12 @@ function createServer(audit = null) {
       instructions: SERVER_INSTRUCTIONS,
     },
   );
+
+  if (rankingClient) {
+    registerRankingTools(server, rankingClient,
+      (error) => toolError('Could not read Ranking Szkoleń.', error, audit),
+      (fn) => runHeavyTool('Could not read Ranking Szkoleń.', audit, fn));
+  }
 
   if (gtmClient) {
     registerGtmTools(server, gtmClient, audit);

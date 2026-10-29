@@ -380,3 +380,40 @@ that HTML tags are missing.
 ## Google Tag Manager READ
 
 When `GTM_ENABLED=true`, the MCP exposes read-only GTM tools for the configured account, its containers, workspaces, tags, triggers, variables, built-in variables, container version headers and the live version. Configure `GTM_CLIENT_ID`, `GTM_CLIENT_SECRET`, `GTM_REFRESH_TOKEN` and required `GTM_ACCOUNT_ID`. The configured account ID is enforced as an allowlist. List tools accept `page_token`; continue while Google returns `nextPageToken`. The only requested Google scope is `https://www.googleapis.com/auth/tagmanager.readonly`; no GTM write or publish operation is implemented.
+
+## Ranking Szkoleń READ (GROW-1080)
+
+Optional provider in this same server, using separate Basic Auth credentials.
+Set `RANKING_ENABLED=true`, `RANKING_BASE_URL` (Drupal origin),
+`RANKING_USERNAME`, `RANKING_PASSWORD`, and optional `RANKING_TIMEOUT_MS`
+(default 30000). All credentials are required when enabled; disabled by default,
+with no Ranking tools registered. Existing 4GROW configuration stays required.
+Do not replace DRUPAL_* with Ranking credentials. MCP bearer auth and
+rate/concurrency/response limits are shared; Drupal credentials are separate.
+
+Deploy/enable `rs_content_api` on the test Ranking and run its database updates.
+Assign a technical account `ranking_mcp_reader` (includes per-type revision READ).
+Current node/revision/field access remains enforced; unpublished content requires
+additional Drupal permissions. Use HTTPS and ensure Oracle can reach the origin.
+Set secrets only in `/opt/4grow-mcp-shared/.env`, never commit them. Restart
+`4grow-mcp.service` after configuration changes and refresh the app tool list.
+
+Six read-only tools: `ranking_list_content_types`,
+`ranking_get_content_type_schema`, `ranking_get_content`,
+`ranking_search_content`, `ranking_get_content_revisions`,
+`ranking_get_content_revision`. The resource parameter selects `content`
+(default, training/company), `products` (dates) or `product-variations`.
+Revision tools accept node IDs only; Commerce entities are not revisionable.
+Discovery/schema return actual machine names. Full get omits fields, expansions
+are explicit and bounded. Search uses AND filters with physical property names,
+selected output fields and after_id. Revisions support fields/changes_only and
+asc/desc cursors. Follow returned cursors even on empty partial pages; inspect
+all truncation flags. The adapter validates responses without flattening fields.
+No Ranking WRITE/create/delete/publish tools are registered.
+
+Validation: 106 checks through the actual MCP HTTP transport against local
+Ranking Drupal passed, using a disposable reader removed after the run. Covered
+all eight bundle schemas, full reads for both nodes and all three product/variant
+bundles, Paragraph expansion, search pagination, revision cursor/changes_only,
+invalid inputs, disabled provider and missing credentials. `npm run check` passed.
+No production Drupal credentials or data were used by the test.
