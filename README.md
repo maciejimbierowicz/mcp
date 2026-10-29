@@ -409,7 +409,7 @@ are explicit and bounded. Search uses AND filters with physical property names,
 selected output fields and after_id. Revisions support fields/changes_only and
 asc/desc cursors. Follow returned cursors even on empty partial pages; inspect
 all truncation flags. The adapter validates responses without flattening fields.
-No Ranking WRITE/create/delete/publish tools are registered.
+Company WRITE is separately optional as described below. Ranking node create/delete/publish tools are not registered.
 
 Validation: 106 checks through the actual MCP HTTP transport against local
 Ranking Drupal passed, using a disposable reader removed after the run. Covered
@@ -417,3 +417,36 @@ all eight bundle schemas, full reads for both nodes and all three product/varian
 bundles, Paragraph expansion, search pagination, revision cursor/changes_only,
 invalid inputs, disabled provider and missing credentials. `npm run check` passed.
 No production Drupal credentials or data were used by the test.
+
+## Ranking company WRITE (GROW-1080)
+
+Set `RANKING_WRITE_ENABLED=true` and separate `RANKING_WRITE_USERNAME` /
+`RANKING_WRITE_PASSWORD` only after configuring the Drupal permission
+`write ranking content api`, node update access, and update 10004. WRITE is off
+by default, requires the Ranking READ provider, and never falls back to READ or
+4GROW credentials. No change to existing 4GROW WRITE configuration.
+
+Four additional tools: `ranking_get_content_write_schema`,
+`ranking_preview_content_update`, `ranking_commit_content_update`, and
+`ranking_get_content_write_audit`. All target existing company_profile nodes.
+Schema exposes 30 business fields and actual bounded taxonomy choices (including
+Views-based selection). Native booleans include VAT and partner/acceptance flags;
+ratings/counters are writable. Address, text/summary, links, references and three
+Paragraph types are supported. No root create/delete/publish, author/language,
+file/image/Media operations. New allowed Paragraphs may be added to an existing
+company; every existing item must be preserved, with exact IDs/revisions for edits.
+
+Read current revision, discover WRITE schema, preview desired fields, display the
+entire exact BEFORE/AFTER, wait for explicit confirmation, then commit once.
+Token is user-bound, one-time and expires after 10 minutes. Verify persisted
+revision and audit. Conflicts require a fresh READ/preview/confirmation; do not
+retry commits automatically. API enforces account/node/Paragraph locks, snapshots,
+transactional revision/audit/token consumption, and 10 commits/account/minute.
+A pending mass batch from existing hooks aborts/rolls back the save, including
+inconsistent duplicate-company VAT cases; no mass training/price update is started.
+
+Local acceptance: 74 company API checks and 19 actual MCP transport checks
+passed using disposable profiles/accounts, plus 228 earlier READ regression
+checks. Existing site trainer deletion has a reload-after-delete bug; fixture
+cleanup used an in-memory test-only replacement for that delete callback. No
+application hook was changed or skipped during actual WRITE operations.

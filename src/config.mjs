@@ -87,7 +87,18 @@ const ranking = rankingEnabled ? Object.freeze({
   timeoutMs: parseTimeoutMs(process.env.RANKING_TIMEOUT_MS),
 }) : null;
 
+const rankingWriteEnabled = parseBoolean('RANKING_WRITE_ENABLED', process.env.RANKING_WRITE_ENABLED, false);
+if (rankingWriteEnabled && !rankingEnabled) throw new Error('Ranking WRITE requires RANKING_ENABLED=true.');
+const rankingWrite = rankingWriteEnabled ? Object.freeze({
+  baseUrl: ranking.baseUrl,
+  username: requiredEnvironmentVariable('RANKING_WRITE_USERNAME'),
+  password: requiredEnvironmentVariable('RANKING_WRITE_PASSWORD'),
+  timeoutMs: ranking.timeoutMs,
+}) : null;
+
 export const config = Object.freeze({
+  rankingWrite,
+
   ranking,
 
   port: parsePort(process.env.MCP_PORT),

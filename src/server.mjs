@@ -14,6 +14,7 @@ import { registerGtmTools } from './gtm-tools.mjs';
 import { registerRegistrationTools } from './registration-tools.mjs';
 import { registerTermTools } from './term-tools.mjs';
 import { registerRankingTools } from './ranking-tools.mjs';
+import { registerRankingWriteTools } from './ranking-write-tools.mjs';
 import { registerCreateTools } from './create-tools.mjs';
 import {
   createSemaphore,
@@ -31,6 +32,9 @@ const drupalClient = new DrupalClient({
 });
 const rankingClient = config.ranking ? new DrupalClient({
   ...config.ranking, maxResponseBytes: config.maxResponseBytes,
+}) : null;
+const rankingWriteClient = config.rankingWrite ? new DrupalClient({
+  ...config.rankingWrite, maxResponseBytes: config.maxResponseBytes,
 }) : null;
 const drupalWriteClient = config.writeEnabled
   ? new DrupalClient({
@@ -510,6 +514,12 @@ function createServer(audit = null) {
     registerRankingTools(server, rankingClient,
       (error) => toolError('Could not read Ranking Szkoleń.', error, audit),
       (fn) => runHeavyTool('Could not read Ranking Szkoleń.', audit, fn));
+  }
+
+  if (rankingWriteClient) {
+    registerRankingWriteTools(server, rankingWriteClient,
+      (error) => toolError('Could not complete Ranking company operation.', error, audit),
+      (fn) => runHeavyTool('Could not complete Ranking company operation.', audit, fn));
   }
 
   if (gtmClient) {
