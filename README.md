@@ -533,3 +533,46 @@ data; new audience blocks may contain text without an icon. The training image
 handler, including Views owner/context filters, with no creation of target nodes
 or terms. No new tools/endpoints or deployment settings; Oracle WRITE remains
 disabled until the separate test deployment step.
+
+
+## Ranking Commerce date WRITE
+
+Existing date products (`default`, `closed`, `to_order`) expose 18 common fields
+through four additional tools, using the existing explicit Ranking WRITE
+credentials and opt-in `RANKING_WRITE_ENABLED`. Drupal also requires the separate
+`write ranking dates api` permission and database update 10005. Reader grants
+stay unchanged; do not activate WRITE or deploy automatically.
+
+1. `ranking_get_product_write_schema`: actual fields/types/Paragraphs and rules.
+2. `ranking_get_content` with `resource=products`: get the opaque `write_version`.
+3. `ranking_preview_product_update`: pass `id`, `expected_version` and `updates`.
+4. Display the full exact `changes` **and** `related_changes`, then obtain explicit
+   confirmation of this preview.
+5. `ranking_commit_product_update`: only `preview_token` and `confirmed=true`.
+6. Verify product READ and `ranking_get_product_write_audit`; paginate the audit.
+
+Dates are **all-day**, not hours: `npx_event_date` is the entire desired ordered,
+nonoverlapping list of inclusive `{value:"YYYY-MM-DD",end_value:"YYYY-MM-DD"}`
+ranges (max 50). `[]` clears dates. The product stores UTC 00:00:00/23:59:59.
+Other fields: city, status (`confirmed`/`guaranteed`, not boolean), participant
+thresholds/limits, room, criteria, benefit-price JSON text, seven day/minute values,
+trainer Paragraphs and benefit Paragraph. Benefit-price text uses the actual JSON
+list string [{"entity_id":123,"value":"50.00"}], not free text; IDs must refer to
+existing benefit terms. Reference targets must already exist;
+all existing Paragraphs must be preserved. No variation/price/SKU/stock, closed
+price-mode/day-price/hide-price, training-link, author or publication WRITE.
+
+Products have no revisions. A full stored-state fingerprint includes exact
+Paragraph content, including in-place changes and same-second saves. Date preview
+also includes the generated title and any change to the linked training's future
+dates flag. That flag receives a node revision when changed; node/date token and
+audit namespaces are separate. Stored hourly price remains unchanged; changing
+it requires an explicit training WRITE. Date commit locks/rechecks the product,
+all existing sibling dates, linked training, variants and Paragraphs. Audit and
+token consumption share the transaction. Limit 10 node/date commits combined per
+account/minute, 250 sibling dates, 50 variants and 250 Paragraphs. Conflicts require
+new READ/preview/confirmation; never auto-retry or invent product revision IDs.
+
+Deploy the API module with the scoped `npx_main` and `npx_training` hook guards.
+Ordinary form saves keep existing behavior. The existing product search-cache
+queue remains enabled; search visibility follows normal queue processing delay.

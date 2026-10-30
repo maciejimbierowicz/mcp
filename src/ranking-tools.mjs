@@ -25,6 +25,7 @@ const content = {
   revision_id: id.nullable(), language: z.string(), fields: fieldMap,
   nid: id.optional(), product_id: id.optional(), variation_id: id.optional(),
   active_program_field: z.string().optional(),
+  write_version: z.string().regex(/^[a-f0-9]{64}$/).nullable().optional(),
 };
 const revisionMetadata = {
   revision_id: id, current: z.boolean(), timestamp: integer.nullable(),
@@ -76,7 +77,7 @@ export function registerRankingTools(server, client, onError, runRead) {
     { resource, content_type: field }, { ...typeMetadata, fields: z.array(schemaField) },
     ({ resource, content_type }) => client.get(`${base}/${resource}/types/${content_type}/schema`));
   register('ranking_get_content',
-    'Read a Ranking training/company, date product or variant by resource and ID. Omit fields for all accessible fields. Expand reference paths explicitly, at most two levels; inspect truncated/fields_truncated/expansion_status for gaps. Products link to training via npx_training. Never use 4GROW field names or tools for Ranking.',
+    'Read a Ranking training/company, date product or variant by resource and ID. Omit fields for all accessible fields. Expand reference paths explicitly, at most two levels; inspect truncated/fields_truncated/expansion_status for gaps. Products link to training via npx_training. Product write_version is the opaque stored-state fingerprint needed for date WRITE preview; a null value means the current graph is not writable. Never use 4GROW field names or tools for Ranking.',
     { resource, id, fields: fields.optional(), expand: expand.optional() }, content,
     ({ resource, id, fields, expand }) => client.get(query(`${base}/${resource}/${id}`, { fields, expand })));
   register('ranking_search_content',
