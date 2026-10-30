@@ -463,8 +463,8 @@ node/field view/update permissions. Company-only permission does not grant it.
 WRITE credentials and RANKING_WRITE_ENABLED stay separate and disabled by default.
 
 The schema includes hidden/legacy business fields, stored prices/flags and direct
-text program. No training Paragraph updates yet (visible title, description and
-structured program follow in later checkpoints); no dates/products/variants,
+text program. Description and nested program Paragraphs are supported below; visible heading
+and other Paragraphs follow in later checkpoints; no dates/products/variants,
 publish, author, create/delete or upload. Do not use npxtraining/4GROW field names.
 Existing company/room/discount IDs must come from READ/search/expand; those choices
 are not enumerated and are marked incomplete. Taxonomy choices use the actual
@@ -480,3 +480,56 @@ Paragraph/image content is preserved while Drupal advances revision pointers.
 Acceptance: 121 training API + 19 actual MCP checks; regressions 74 company API +
 19 company MCP + 228 READ passed. Fixtures removed. No Oracle WRITE activation
 or production deployment in this checkpoint.
+
+## Training WRITE — checkpoint 2: description/program Paragraphs
+
+The same four Ranking WRITE tools now expose 38 training fields. Discover
+`field_section_05` (one text_indexed description) and `field_section_07` (program
+list with nested field_element/program_element lists) through the WRITE schema.
+Descriptors include field_types, children and preserved_fields, so use actual
+names/labels instead of guessing. field_number_first means duration; list order
+is controlled by the list, not this field. Visible heading and other sections
+are later checkpoints. Plain-text and structured programs remain independent,
+with no owner-role restriction on WRITE.
+
+Use exact existing IDs/revisions and preserve every item at both levels. Edit
+with bundle/fields, append new allowed objects with bundle/fields, and reorder
+within the same parent. No removal, reparenting, Media editing or uploads;
+program_element.field_video is preserved verbatim. Full nested BEFORE/AFTER
+includes all content, unchanged siblings and preserved data. Display it exactly,
+wait for explicit confirmation, then commit once and fetch the saved tree/audit.
+Preview revision IDs describe the current basis; new objects have null IDs;
+actual new revision IDs are read after commit. Limits: two levels, 50 items per
+field, 250 per operation. Top-level updates now allow at most 38 schema fields.
+
+Tests passed: 59 API + 17 actual MCP calls/checks, including nested additions,
+ordering, nonempty Media reference preservation, in-place conflict, real competing
+row-lock conflict and forced audit failure/atomic rollback. Backend uses fresh
+READ COMMITTED reads within the controlled transaction to avoid stale snapshots
+after lock waits; connection defaults are not changed. Regressions passed:
+121 training simple API + 19 MCP; 74 company API + 19 MCP. No Oracle deployment
+or WRITE activation in this checkpoint.
+
+
+## Training WRITE — remaining Paragraphs
+
+Current WRITE schema exposes 45 training fields: 36 simple fields and nine
+Paragraph fields. The same four Ranking WRITE tools additionally support:
+
+- `field_section_01/title_subtile`: required visible heading (`field_text_1`)
+  and subtitle (`field_text_2`), independent of the internal node title.
+- `field_section_02/text_indexed`: learning outcomes.
+- `field_section_04/icon_text`: audience text; existing Media icons are preserved.
+- `field_section_06/text_indexed`: requirements.
+- `field_section_08/trainer`: references to existing `trener` nodes.
+- `field_section_09/benefit`: existing `szkolenia_benefity` taxonomy terms.
+- `field_section_10/booking_rules`: confirmation, cancellation and rescheduling.
+
+Inspect WRITE schema for exact cardinalities and content fields. Keep all existing
+Paragraphs in each field; edit/add/reorder with full BEFORE/AFTER and explicit
+confirmation. Existing audience icons and program videos are read-only preserved
+data; new audience blocks may contain text without an icon. The training image
+(`field_section_11`) is outside WRITE. References use the actual Drupal selection
+handler, including Views owner/context filters, with no creation of target nodes
+or terms. No new tools/endpoints or deployment settings; Oracle WRITE remains
+disabled until the separate test deployment step.
