@@ -16,10 +16,10 @@ function parsePort(value) {
   return port;
 }
 
-function parseBaseUrl(value) {
+function parseBaseUrl(value, name = 'DRUPAL_BASE_URL') {
   const url = new URL(value);
   if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new Error('DRUPAL_BASE_URL must use HTTP or HTTPS.');
+    throw new Error(`${name} must use HTTP or HTTPS.`);
   }
   return url.toString().replace(/\/$/, '');
 }
@@ -79,7 +79,28 @@ const gtmAccountId = process.env.GTM_ACCOUNT_ID?.trim() ?? "";
 if (gtmEnabled && (!gtmClientId || !gtmClientSecret || !gtmRefreshToken || !gtmAccountId)) {
   throw new Error("GTM_CLIENT_ID, GTM_CLIENT_SECRET, GTM_REFRESH_TOKEN and GTM_ACCOUNT_ID are required when GTM_ENABLED=true.");
 }
+const rankingEnabled = parseBoolean('RANKING_ENABLED', process.env.RANKING_ENABLED, false);
+const ranking = rankingEnabled ? Object.freeze({
+  baseUrl: parseBaseUrl(requiredEnvironmentVariable('RANKING_BASE_URL'), 'RANKING_BASE_URL'),
+  username: requiredEnvironmentVariable('RANKING_USERNAME'),
+  password: requiredEnvironmentVariable('RANKING_PASSWORD'),
+  timeoutMs: parseTimeoutMs(process.env.RANKING_TIMEOUT_MS),
+}) : null;
+
+const rankingWriteEnabled = parseBoolean('RANKING_WRITE_ENABLED', process.env.RANKING_WRITE_ENABLED, false);
+if (rankingWriteEnabled && !rankingEnabled) throw new Error('Ranking WRITE requires RANKING_ENABLED=true.');
+const rankingWrite = rankingWriteEnabled ? Object.freeze({
+  baseUrl: ranking.baseUrl,
+  username: requiredEnvironmentVariable('RANKING_WRITE_USERNAME'),
+  password: requiredEnvironmentVariable('RANKING_WRITE_PASSWORD'),
+  timeoutMs: ranking.timeoutMs,
+}) : null;
+
 export const config = Object.freeze({
+  rankingWrite,
+
+  ranking,
+
   port: parsePort(process.env.MCP_PORT),
   allowedHosts: parseAllowedHosts(process.env.MCP_ALLOWED_HOSTS),
   mcpAuthToken: requiredEnvironmentVariable('MCP_AUTH_TOKEN'),
