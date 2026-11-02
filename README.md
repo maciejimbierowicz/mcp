@@ -420,11 +420,13 @@ No production Drupal credentials or data were used by the test.
 
 ## Ranking company WRITE (GROW-1080)
 
-Set `RANKING_WRITE_ENABLED=true` and separate `RANKING_WRITE_USERNAME` /
-`RANKING_WRITE_PASSWORD` only after configuring the Drupal permission
+Set `RANKING_WRITE_ENABLED=true` after configuring the Drupal permission
 `write ranking content api`, node update access, and update 10004. WRITE is off
-by default, requires the Ranking READ provider, and never falls back to READ or
-4GROW credentials. No change to existing 4GROW WRITE configuration.
+by default and requires the Ranking READ provider. WRITE uses `RANKING_USERNAME`
+and `RANKING_PASSWORD` by default. For a separate account, set both
+`RANKING_WRITE_USERNAME` and `RANKING_WRITE_PASSWORD`; a partial override is rejected.
+Empty overrides use the READ account. No fallback to 4GROW credentials and no
+change to existing 4GROW WRITE configuration.
 
 Four additional tools: `ranking_get_content_write_schema`,
 `ranking_preview_content_update`, `ranking_commit_content_update`, and
@@ -460,7 +462,8 @@ Omitting content_type preserves the company schema default. Preview/commit/audit
 keep their existing names/paths and the same explicit-confirmation protocol.
 Training access additionally requires `write ranking training api` and normal
 node/field view/update permissions. Company-only permission does not grant it.
-WRITE credentials and RANKING_WRITE_ENABLED stay separate and disabled by default.
+WRITE uses the Ranking READ account unless both optional WRITE credentials are set.
+`RANKING_WRITE_ENABLED` remains disabled by default.
 
 The schema includes hidden/legacy business fields, stored prices/flags and direct
 text program. Description and nested program Paragraphs are supported below; visible heading
@@ -538,10 +541,10 @@ disabled until the separate test deployment step.
 ## Ranking Commerce date WRITE
 
 Existing date products (`default`, `closed`, `to_order`) expose 18 common fields
-through four additional tools, using the existing explicit Ranking WRITE
-credentials and opt-in `RANKING_WRITE_ENABLED`. Drupal also requires the separate
-`write ranking dates api` permission and database update 10005. Reader grants
-stay unchanged; do not activate WRITE or deploy automatically.
+through four additional tools, using the shared Ranking account (or optional
+WRITE account override) and opt-in `RANKING_WRITE_ENABLED`. Drupal also requires the separate
+`write ranking dates api` permission and database update 10005. Ranking update 10006 grants the existing `ranking_mcp_reader` role the API WRITE
+and entity edit permissions for companies, trainings and dates.
 
 1. `ranking_get_product_write_schema`: actual fields/types/Paragraphs and rules.
 2. `ranking_get_content` with `resource=products`: get the opaque `write_version`.
