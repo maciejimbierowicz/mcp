@@ -412,3 +412,199 @@ that HTML tags are missing.
 ## Google Tag Manager READ
 
 When `GTM_ENABLED=true`, the MCP exposes read-only GTM tools for the configured account, its containers, workspaces, tags, triggers, variables, built-in variables, container version headers and the live version. Configure `GTM_CLIENT_ID`, `GTM_CLIENT_SECRET`, `GTM_REFRESH_TOKEN` and required `GTM_ACCOUNT_ID`. The configured account ID is enforced as an allowlist. List tools accept `page_token`; continue while Google returns `nextPageToken`. The only requested Google scope is `https://www.googleapis.com/auth/tagmanager.readonly`; no GTM write or publish operation is implemented.
+
+## Ranking Szkoleń READ (GROW-1080)
+
+Optional provider in this same server, using separate Basic Auth credentials.
+Set `RANKING_ENABLED=true`, `RANKING_BASE_URL` (Drupal origin),
+`RANKING_USERNAME`, `RANKING_PASSWORD`, and optional `RANKING_TIMEOUT_MS`
+(default 30000). All credentials are required when enabled; disabled by default,
+with no Ranking tools registered. Existing 4GROW configuration stays required.
+Do not replace DRUPAL_* with Ranking credentials. MCP bearer auth and
+rate/concurrency/response limits are shared; Drupal credentials are separate.
+
+Deploy/enable `rs_content_api` on the test Ranking and run its database updates.
+Assign a technical account `ranking_mcp_reader` (includes per-type revision READ).
+Current node/revision/field access remains enforced; unpublished content requires
+additional Drupal permissions. Use HTTPS and ensure Oracle can reach the origin.
+Set secrets only in `/opt/4grow-mcp-shared/.env`, never commit them. Restart
+`4grow-mcp.service` after configuration changes and refresh the app tool list.
+
+Six read-only tools: `ranking_list_content_types`,
+`ranking_get_content_type_schema`, `ranking_get_content`,
+`ranking_search_content`, `ranking_get_content_revisions`,
+`ranking_get_content_revision`. The resource parameter selects `content`
+(default, training/company), `products` (dates) or `product-variations`.
+Revision tools accept node IDs only; Commerce entities are not revisionable.
+Discovery/schema return actual machine names. Full get omits fields, expansions
+are explicit and bounded. Search uses AND filters with physical property names,
+selected output fields and after_id. Revisions support fields/changes_only and
+asc/desc cursors. Follow returned cursors even on empty partial pages; inspect
+all truncation flags. The adapter validates responses without flattening fields.
+Company WRITE is separately optional as described below. Ranking node create/delete/publish tools are not registered.
+
+Validation: 106 checks through the actual MCP HTTP transport against local
+Ranking Drupal passed, using a disposable reader removed after the run. Covered
+all eight bundle schemas, full reads for both nodes and all three product/variant
+bundles, Paragraph expansion, search pagination, revision cursor/changes_only,
+invalid inputs, disabled provider and missing credentials. `npm run check` passed.
+No production Drupal credentials or data were used by the test.
+
+## Ranking company WRITE (GROW-1080)
+
+Set `RANKING_WRITE_ENABLED=true` and separate `RANKING_WRITE_USERNAME` /
+`RANKING_WRITE_PASSWORD` only after configuring the Drupal permission
+`write ranking content api`, node update access, and update 10004. WRITE is off
+by default, requires the Ranking READ provider, and never falls back to READ or
+4GROW credentials. No change to existing 4GROW WRITE configuration.
+
+Four additional tools: `ranking_get_content_write_schema`,
+`ranking_preview_content_update`, `ranking_commit_content_update`, and
+`ranking_get_content_write_audit`. They target existing company_profile nodes and simple npx_training fields (see below).
+Schema exposes 30 business fields and actual bounded taxonomy choices (including
+Views-based selection). Native booleans include VAT and partner/acceptance flags;
+ratings/counters are writable. Address, text/summary, links, references and three
+Paragraph types are supported. No root create/delete/publish, author/language,
+file/image/Media operations. New allowed Paragraphs may be added to an existing
+company; every existing item must be preserved, with exact IDs/revisions for edits.
+
+Read current revision, discover WRITE schema, preview desired fields, display the
+entire exact BEFORE/AFTER, wait for explicit confirmation, then commit once.
+Token is user-bound, one-time and expires after 10 minutes. Verify persisted
+revision and audit. Conflicts require a fresh READ/preview/confirmation; do not
+retry commits automatically. API enforces account/node/Paragraph locks, snapshots,
+transactional revision/audit/token consumption, and 10 commits/account/minute.
+A pending mass batch from existing hooks aborts/rolls back the save, including
+inconsistent duplicate-company VAT cases; no mass training/price update is started.
+
+Local acceptance: 74 company API checks and 19 actual MCP transport checks
+passed using disposable profiles/accounts, plus 228 earlier READ regression
+checks. Existing site trainer deletion has a reload-after-delete bug; fixture
+cleanup used an in-memory test-only replacement for that delete callback. No
+application hook was changed or skipped during actual WRITE operations.
+
+## Training WRITE — checkpoint 1
+
+Existing four Ranking WRITE tools now support simple npx_training fields.
+Use `ranking_get_content_write_schema` with `content_type: "npx_training"` to
+discover 36 fields, their types/allowed list values and real reference choices.
+Omitting content_type preserves the company schema default. Preview/commit/audit
+keep their existing names/paths and the same explicit-confirmation protocol.
+Training access additionally requires `write ranking training api` and normal
+node/field view/update permissions. Company-only permission does not grant it.
+WRITE credentials and RANKING_WRITE_ENABLED stay separate and disabled by default.
+
+The schema includes hidden/legacy business fields, stored prices/flags and direct
+text program. Description and nested program Paragraphs are supported below; visible heading
+and other Paragraphs follow in later checkpoints; no dates/products/variants,
+publish, author, create/delete or upload. Do not use npxtraining/4GROW field names.
+Existing company/room/discount IDs must come from READ/search/expand; those choices
+are not enumerated and are marked incomplete. Taxonomy choices use the actual
+selection handler and may also be truncated.
+
+Restricted training saves affect only explicitly supplied fields on that node.
+They do not cascade VAT to the company/siblings, delete empty Paragraphs, or
+implicitly recalculate net/gross/hourly values. Show all intended related fields
+in one preview and wait for confirmation. The backend npx_training integration
+guard must be deployed together with the API module. Old and unchanged nested
+Paragraph/image content is preserved while Drupal advances revision pointers.
+
+Acceptance: 121 training API + 19 actual MCP checks; regressions 74 company API +
+19 company MCP + 228 READ passed. Fixtures removed. No Oracle WRITE activation
+or production deployment in this checkpoint.
+
+## Training WRITE — checkpoint 2: description/program Paragraphs
+
+The same four Ranking WRITE tools now expose 38 training fields. Discover
+`field_section_05` (one text_indexed description) and `field_section_07` (program
+list with nested field_element/program_element lists) through the WRITE schema.
+Descriptors include field_types, children and preserved_fields, so use actual
+names/labels instead of guessing. field_number_first means duration; list order
+is controlled by the list, not this field. Visible heading and other sections
+are later checkpoints. Plain-text and structured programs remain independent,
+with no owner-role restriction on WRITE.
+
+Use exact existing IDs/revisions and preserve every item at both levels. Edit
+with bundle/fields, append new allowed objects with bundle/fields, and reorder
+within the same parent. No removal, reparenting, Media editing or uploads;
+program_element.field_video is preserved verbatim. Full nested BEFORE/AFTER
+includes all content, unchanged siblings and preserved data. Display it exactly,
+wait for explicit confirmation, then commit once and fetch the saved tree/audit.
+Preview revision IDs describe the current basis; new objects have null IDs;
+actual new revision IDs are read after commit. Limits: two levels, 50 items per
+field, 250 per operation. Top-level updates now allow at most 38 schema fields.
+
+Tests passed: 59 API + 17 actual MCP calls/checks, including nested additions,
+ordering, nonempty Media reference preservation, in-place conflict, real competing
+row-lock conflict and forced audit failure/atomic rollback. Backend uses fresh
+READ COMMITTED reads within the controlled transaction to avoid stale snapshots
+after lock waits; connection defaults are not changed. Regressions passed:
+121 training simple API + 19 MCP; 74 company API + 19 MCP. No Oracle deployment
+or WRITE activation in this checkpoint.
+
+
+## Training WRITE — remaining Paragraphs
+
+Current WRITE schema exposes 45 training fields: 36 simple fields and nine
+Paragraph fields. The same four Ranking WRITE tools additionally support:
+
+- `field_section_01/title_subtile`: required visible heading (`field_text_1`)
+  and subtitle (`field_text_2`), independent of the internal node title.
+- `field_section_02/text_indexed`: learning outcomes.
+- `field_section_04/icon_text`: audience text; existing Media icons are preserved.
+- `field_section_06/text_indexed`: requirements.
+- `field_section_08/trainer`: references to existing `trener` nodes.
+- `field_section_09/benefit`: existing `szkolenia_benefity` taxonomy terms.
+- `field_section_10/booking_rules`: confirmation, cancellation and rescheduling.
+
+Inspect WRITE schema for exact cardinalities and content fields. Keep all existing
+Paragraphs in each field; edit/add/reorder with full BEFORE/AFTER and explicit
+confirmation. Existing audience icons and program videos are read-only preserved
+data; new audience blocks may contain text without an icon. The training image
+(`field_section_11`) is outside WRITE. References use the actual Drupal selection
+handler, including Views owner/context filters, with no creation of target nodes
+or terms. No new tools/endpoints or deployment settings; Oracle WRITE remains
+disabled until the separate test deployment step.
+
+
+## Ranking Commerce date WRITE
+
+Existing date products (`default`, `closed`, `to_order`) expose 18 common fields
+through four additional tools, using the existing explicit Ranking WRITE
+credentials and opt-in `RANKING_WRITE_ENABLED`. Drupal also requires the separate
+`write ranking dates api` permission and database update 10005. Reader grants
+stay unchanged; do not activate WRITE or deploy automatically.
+
+1. `ranking_get_product_write_schema`: actual fields/types/Paragraphs and rules.
+2. `ranking_get_content` with `resource=products`: get the opaque `write_version`.
+3. `ranking_preview_product_update`: pass `id`, `expected_version` and `updates`.
+4. Display the full exact `changes` **and** `related_changes`, then obtain explicit
+   confirmation of this preview.
+5. `ranking_commit_product_update`: only `preview_token` and `confirmed=true`.
+6. Verify product READ and `ranking_get_product_write_audit`; paginate the audit.
+
+Dates are **all-day**, not hours: `npx_event_date` is the entire desired ordered,
+nonoverlapping list of inclusive `{value:"YYYY-MM-DD",end_value:"YYYY-MM-DD"}`
+ranges (max 50). `[]` clears dates. The product stores UTC 00:00:00/23:59:59.
+Other fields: city, status (`confirmed`/`guaranteed`, not boolean), participant
+thresholds/limits, room, criteria, benefit-price JSON text, seven day/minute values,
+trainer Paragraphs and benefit Paragraph. Benefit-price text uses the actual JSON
+list string [{"entity_id":123,"value":"50.00"}], not free text; IDs must refer to
+existing benefit terms. Reference targets must already exist;
+all existing Paragraphs must be preserved. No variation/price/SKU/stock, closed
+price-mode/day-price/hide-price, training-link, author or publication WRITE.
+
+Products have no revisions. A full stored-state fingerprint includes exact
+Paragraph content, including in-place changes and same-second saves. Date preview
+also includes the generated title and any change to the linked training's future
+dates flag. That flag receives a node revision when changed; node/date token and
+audit namespaces are separate. Stored hourly price remains unchanged; changing
+it requires an explicit training WRITE. Date commit locks/rechecks the product,
+all existing sibling dates, linked training, variants and Paragraphs. Audit and
+token consumption share the transaction. Limit 10 node/date commits combined per
+account/minute, 250 sibling dates, 50 variants and 250 Paragraphs. Conflicts require
+new READ/preview/confirmation; never auto-retry or invent product revision IDs.
+
+Deploy the API module with the scoped `npx_main` and `npx_training` hook guards.
+Ordinary form saves keep existing behavior. The existing product search-cache
+queue remains enabled; search visibility follows normal queue processing delay.
