@@ -89,10 +89,15 @@ const ranking = rankingEnabled ? Object.freeze({
 
 const rankingWriteEnabled = parseBoolean('RANKING_WRITE_ENABLED', process.env.RANKING_WRITE_ENABLED, false);
 if (rankingWriteEnabled && !rankingEnabled) throw new Error('Ranking WRITE requires RANKING_ENABLED=true.');
+const rankingWriteUsername = process.env.RANKING_WRITE_USERNAME?.trim();
+const rankingWritePassword = process.env.RANKING_WRITE_PASSWORD?.trim();
+if (rankingWriteEnabled && Boolean(rankingWriteUsername) !== Boolean(rankingWritePassword)) {
+  throw new Error('Set both RANKING_WRITE_USERNAME and RANKING_WRITE_PASSWORD, or leave both empty to use Ranking READ credentials.');
+}
 const rankingWrite = rankingWriteEnabled ? Object.freeze({
   baseUrl: ranking.baseUrl,
-  username: requiredEnvironmentVariable('RANKING_WRITE_USERNAME'),
-  password: requiredEnvironmentVariable('RANKING_WRITE_PASSWORD'),
+  username: rankingWriteUsername || ranking.username,
+  password: rankingWritePassword || ranking.password,
   timeoutMs: ranking.timeoutMs,
 }) : null;
 
