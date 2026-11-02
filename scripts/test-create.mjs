@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { registerCreateTools } from '../src/create-tools.mjs';
+import { registerCreateTools, contentUploadInputSchema, contentUploadRequest } from '../src/create-tools.mjs';
 
 const tools = {};
 const calls = [];
@@ -40,12 +40,43 @@ const opinion = {
   field_ocena_wartosci_opinii: reference,
   field_name: null, field_surname: null, field_survey: null,
   field_linkedin_link: null, field_goldenline_link: null,
-  field_additional_info: [], field_promotions: false,
+  field_additional_info: [], field_promotions: false, field_image: null,
 };
 const wol = { ...base, content_type: 'wall_of_love', field_wol_content: [], alias: '/opinia-testowa' };
 const token = 'a'.repeat(64);
-for (const content of [opinion, wol]) {
-  const input = { content_type: content.content_type, fields: content === opinion ? fields : { title: base.title } };
+const picturedOpinion = { ...opinion, field_image: {
+  target_id: 123, alt: 'Portret', title: null, filename: 'portrait.png',
+  url: 'https://4grow.pl/sites/default/files/portrait.png', mime_type: 'image/png', width: 16, height: 16,
+} };
+assert.deepEqual(contentUploadRequest({
+  content_type: 'opinia', destination: { scope: 'content', field: 'field_image' },
+}), { path: '/api/v1/content/create/uploads', body: {
+  content_type: 'opinia', destination: { scope: 'content', field: 'field_image' },
+} });
+assert.equal(contentUploadRequest({ nid: 123, expected_revision_id: 456, destination: { scope: 'content', field: 'field_image' } }).path,
+  '/api/v1/content/123/uploads');
+assert.equal(contentUploadRequest({ nid: 123, expected_revision_id: 456, destination: { scope: 'paragraph', bundle: 'example', field: 'field_image' } }).path,
+  '/api/v1/content/123/uploads');
+for (const input of [
+  { content_type: 'opinia', nid: 123, destination: { scope: 'content', field: 'field_image' } },
+  { content_type: 'opinia', expected_revision_id: 456, destination: { scope: 'content', field: 'field_image' } },
+  { content_type: 'opinia', destination: { scope: 'content', field: 'field_survey' } },
+  { content_type: 'wall_of_love', destination: { scope: 'content', field: 'field_image' } },
+  { destination: { scope: 'content', field: 'field_image' } },
+  { nid: 123, destination: { scope: 'content', field: 'field_image' } },
+  { content_type: 'opinia', destination: { scope: 'paragraph', bundle: 'example', field: 'field_image' } },
+]) assert.equal(contentUploadInputSchema.safeParse(input).success, false);
+for (const field_image of [{ upload_token: token, alt: 'Portret', title: 'Zdjęcie autora' }, { target_id: 123, alt: 'Portret' }, null]) {
+  assert.equal(preview.options.inputSchema.safeParse({ content_type: 'opinia', fields: { ...fields, field_image } }).success, true);
+}
+for (const field_image of [
+  { upload_token: token }, { upload_token: 'bad', alt: '' },
+  { upload_token: token, target_id: 123, alt: '' }, { target_id: 123, alt: '', filename: 'unsafe' },
+]) assert.equal(preview.options.inputSchema.safeParse({ content_type: 'opinia', fields: { ...fields, field_image } }).success, false);
+for (const content of [opinion, picturedOpinion, wol]) {
+  const input = { content_type: content.content_type, fields: content.content_type === 'opinia'
+    ? { ...fields, ...(content.field_image ? { field_image: { upload_token: token, alt: 'Portret' } } : {}) }
+    : { title: base.title } };
   response = {
     operation: 'single_content_create', content_type: content.content_type,
     nid: null, current_revision_id: null, content,
@@ -103,12 +134,26 @@ assert.equal(calls.length, before + 1, 'Conflicts must not be retried');
 // Exercise SDK registration and schema serialization, not only direct handlers.
 const server = new McpServer({ name: 'create-test', version: '1.0.0' });
 registerCreateTools(server, client, error, error);
+server.registerTool('create_content_upload', {
+  inputSchema: contentUploadInputSchema,
+}, async (input) => {
+  const request = contentUploadRequest(input);
+  return { content: [{ type: 'text', text: JSON.stringify(request) }], structuredContent: request };
+});
 const mcp = new Client({ name: 'create-test-client', version: '1.0.0' });
 const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 await Promise.all([server.connect(serverTransport), mcp.connect(clientTransport)]);
 try {
   const listed = await mcp.listTools();
-  assert.equal(listed.tools.length, 2);
+  assert.equal(listed.tools.length, 3);
+  const uploadSchema = listed.tools.find((tool) => tool.name === 'create_content_upload').inputSchema;
+  assert.equal(uploadSchema.type, 'object');
+  assert.equal(uploadSchema.properties.content_type.const, 'opinia');
+  const uploaded = await mcp.callTool({ name: 'create_content_upload', arguments: {
+    content_type: 'opinia', destination: { scope: 'content', field: 'field_image' },
+  } });
+  assert.notEqual(uploaded.isError, true);
+  assert.equal(uploaded.structuredContent.path, '/api/v1/content/create/uploads');
   const schema = listed.tools.find((tool) => tool.name === 'preview_content_create').inputSchema;
   assert.equal(schema.type, 'object');
   assert.deepEqual(schema.properties.content_type.enum, ['wall_of_love', 'opinia']);

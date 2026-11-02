@@ -3,6 +3,36 @@ import * as z from 'zod/v4';
 const id = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const token = z.string().regex(/^[a-f0-9]{64}$/);
 const reference = z.object({ target_id: id }).strict();
+const imageMetadata = { alt: z.string().max(512), title: z.string().max(1024).nullable().optional() };
+const imageInput = z.union([
+  z.object({ target_id: id, ...imageMetadata }).strict(),
+  z.object({ upload_token: token, ...imageMetadata }).strict(),
+]);
+
+// One existing upload tool supports both revision-bound UPDATE and new Opinion.
+export const contentUploadInputSchema = z.object({
+  nid: id.optional(),
+  expected_revision_id: id.optional(),
+  content_type: z.literal('opinia').optional(),
+  destination: z.union([
+    z.object({ scope: z.literal('content'), field: z.string().regex(/^field_[a-z0-9_]+$/) }).strict(),
+    z.object({ scope: z.literal('paragraph'), bundle: z.string().min(1).max(128), field: z.string().regex(/^field_[a-z0-9_]+$/) }).strict(),
+  ]),
+}).strict().superRefine((input, ctx) => {
+  if (input.content_type === 'opinia') {
+    if (input.nid !== undefined || input.expected_revision_id !== undefined
+      || input.destination.scope !== 'content' || input.destination.field !== 'field_image') {
+      ctx.addIssue({ code: 'custom', message: 'New Opinion upload requires only content_type=opinia and content.field_image destination.' });
+    }
+  } else if (input.nid === undefined || input.expected_revision_id === undefined) {
+    ctx.addIssue({ code: 'custom', message: 'Existing content requires nid and expected_revision_id.' });
+  }
+});
+
+export function contentUploadRequest(input) {
+  const body = contentUploadInputSchema.parse(input);
+  return { path: body.content_type === 'opinia' ? '/api/v1/content/create/uploads' : `/api/v1/content/${body.nid}/uploads`, body };
+}
 const textParagraph = z.object({
   bundle: z.literal('par_text'),
   fields: z.object({ field_par_text: z.string().min(1) }).strict(),
@@ -49,6 +79,7 @@ const opinionFields = z.object({
   field_additional_info: consent.nullable().optional(),
   field_promotions: z.boolean().nullable().optional(),
   field_survey: reference.nullable().optional(),
+  field_image: imageInput.nullable().optional(),
   meta_title: z.string().max(255).nullable().optional(),
   meta_description: z.string().max(320).nullable().optional(),
 }).strict();
@@ -73,6 +104,11 @@ const content = z.discriminatedUnion('content_type', [
     field_additional_info: consent,
     field_promotions: z.boolean().nullable(),
     field_survey: reference.nullable(),
+    field_image: z.object({
+      target_id: id, alt: z.string(), title: z.string().nullable(),
+      filename: z.string(), url: z.string().url(), mime_type: z.string(),
+      width: z.number().int().positive(), height: z.number().int().positive(),
+    }).nullable(),
   }),
 ]);
 const wallOfLoveFields = z.object({
@@ -133,7 +169,7 @@ const resultMessage = (value) => ({
 export function registerCreateTools(server, client, onPreviewError, onCommitError) {
   server.registerTool('preview_content_create', {
     title: 'Preview new unpublished Wall of Love or opinion',
-    description: 'Create wall_of_love or opinia without an empty placeholder node. Wall of Love accepts title and optional field_wol_content with new par_text (safe HTML) and wol_opinion paragraphs referencing real existing opinion NIDs. Opinion requires title, body (value/summary), field_zajawka (HTML string), training/category/tag/trainer references resolved from real Drupal data; use get_content_type_schema. Optional author, rating, social links, survey and metatag fields follow the schema. Never infer consent: field_promotions and field_additional_info require an explicit user request. No uploads, image fields, source email, existing Paragraph IDs or publication during CREATE. The preview saves no content. Show the entire returned content and every before/after value, including HTML, text format, consent, unpublished status and alias, then request explicit confirmation before commit_content_create. The 10-minute preview token is bound to the technical Drupal user. Do not use UPDATE commit for this token.',
+    description: 'Create wall_of_love or opinia without an empty placeholder node. Wall of Love accepts title and optional field_wol_content with new par_text (safe HTML) and wol_opinion paragraphs referencing real existing opinion NIDs. Opinion requires title, body (value/summary), field_zajawka (HTML string), training/category/tag/trainer references resolved from real Drupal data; use get_content_type_schema. Optional author, rating, social links, survey and metatag fields follow the schema. Never infer consent: field_promotions and field_additional_info require an explicit user request. Opinion field_image accepts an existing permanent file target_id or an upload_token from create_content_upload with content_type=opinia. Include alt and optional title. Wait for get_content_upload_status=uploaded before preview. Uploads stay temporary until confirmed CREATE; show the returned image URL and metadata with all fields. Wall of Love uploads, source email, existing Paragraph IDs and publication during CREATE are unavailable. The preview saves no content. Show the entire returned content and every before/after value, including HTML, text format, consent, unpublished status and alias, then request explicit confirmation before commit_content_create. The 10-minute preview token is bound to the technical Drupal user. Do not use UPDATE commit for this token.',
     inputSchema: previewInput,
     outputSchema: previewOutput,
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },

@@ -13,7 +13,7 @@ import { GtmClient } from './gtm-client.mjs';
 import { registerGtmTools } from './gtm-tools.mjs';
 import { registerRegistrationTools } from './registration-tools.mjs';
 import { registerTermTools } from './term-tools.mjs';
-import { registerCreateTools } from './create-tools.mjs';
+import { registerCreateTools, contentUploadInputSchema, contentUploadRequest } from './create-tools.mjs';
 import {
   createSemaphore,
   createTokenBucket,
@@ -670,8 +670,8 @@ function createServer(audit = null) {
     registerCreateTools(
       server,
       drupalWriteClient,
-      (error) => toolError('Could not preview Wall of Love creation.', error, audit),
-      (error) => controlledWriteError('Could not create Wall of Love.', error, audit),
+      (error) => toolError('Could not preview content creation.', error, audit),
+      (error) => controlledWriteError('Could not create content.', error, audit),
     );
 
     server.registerTool(
@@ -679,22 +679,8 @@ function createServer(audit = null) {
       {
         title: 'Create secure content upload',
         description:
-          'Creates a 10-minute browser upload link bound to one exact content revision and image/file destination. Give upload_url to the user, then use get_content_upload_status before previewing a content update with upload_token.',
-        inputSchema: {
-          nid: z.number().int().positive(),
-          expected_revision_id: z.number().int().positive(),
-          destination: z.union([
-            z.object({
-              scope: z.literal('content'),
-              field: z.string().regex(/^field_[a-z0-9_]+$/),
-            }).strict(),
-            z.object({
-              scope: z.literal('paragraph'),
-              bundle: z.string().min(1).max(128),
-              field: z.string().regex(/^field_[a-z0-9_]+$/),
-            }).strict(),
-          ]),
-        },
+          'Creates a 10-minute browser upload link. For existing content provide nid, expected_revision_id and the exact image/file destination. For a new opinion provide content_type=opinia and destination={scope:content,field:field_image}, without node/revision IDs. Give upload_url to the user, then check get_content_upload_status before using upload_token in the matching CREATE or UPDATE preview. Never create a placeholder node.',
+        inputSchema: contentUploadInputSchema,
         outputSchema: {
           upload_token: uploadTokenSchema,
           status: z.literal('pending'),
@@ -706,13 +692,10 @@ function createServer(audit = null) {
         },
         annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       },
-      async ({ nid, expected_revision_id: expectedRevisionId, destination }) => {
+      async (input) => {
         try {
-          const result = await drupalWriteClient.post(`/api/v1/content/${nid}/uploads`, {
-            nid,
-            expected_revision_id: expectedRevisionId,
-            destination,
-          });
+          const { path, body } = contentUploadRequest(input);
+          const result = await drupalWriteClient.post(path, body);
           return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
         }
         catch (error) {
