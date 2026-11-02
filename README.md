@@ -166,7 +166,7 @@ WRITE is disabled by default. To enable it for testing, set
 `DRUPAL_WRITE_PASSWORD` for a separate minimal Drupal account. Never reuse the
 READ account or grant the WRITE account administrative permissions.
 
-New content can be created only for `wall_of_love`, using
+New content can be created for `wall_of_love` and `opinia`, using
 `preview_content_create` followed by explicit user confirmation and
 `commit_content_create`. The WRITE account additionally needs the dedicated
 Drupal permission `create npx content api`; this change grants it to nobody.
@@ -181,6 +181,24 @@ other types, uploads and publication flags are rejected. The full preview
 includes defaults, HTML format, unpublished status and the generated alias.
 Show it in full before confirmation. The token is user-bound and expires after
 10 minutes; it cannot be used by an UPDATE commit.
+
+For `content_type: "opinia"`, the same CREATE tools accept `title`, `body`
+(`value` and optional `summary`), `field_zajawka` (HTML string), and required
+training/category/tag/trainer references from real Drupal results. Inspect
+`get_content_type_schema` for active field definitions. Optional author,
+rating, social links, survey, consent and metatag fields follow the tool
+schema and Drupal WRITE allowlist. Supply `field_promotions` and
+`field_additional_info` only on an explicit user request; omitted fields use
+Drupal defaults shown in preview. Body and teaser use the server-selected
+`full_html` format and safe HTML validation. Opinion aliases use
+`/opinie/[node:title]`. Images/uploads, source email and publication flags
+are rejected during CREATE in GROW-1086 step 1. A saved opinion can be
+published through the existing UPDATE tools after a separate confirmation.
+No additional MCP tools are registered. Rebuild Drupal caches and restart
+the adapter after deploying both changes; review existing holders of
+`create npx content api`, which now covers both supported types.
+
+Run `npm run test:create` for the local contract and SDK schema tests.
 
 Commit accepts only `{ preview_token, confirmed: true }` and returns
 `{ status: "committed", result, error: null }` with the real NID, URL, alias,
