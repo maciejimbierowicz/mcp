@@ -11,6 +11,11 @@ function assert(condition, message) {
 }
 
 const firstChunk = SERVER_INSTRUCTIONS.slice(0, 512);
+const fourGrowInstructions = SERVER_INSTRUCTIONS.split('\n\n').find((paragraph) => paragraph.startsWith('For 4GROW,'));
+assert(fourGrowInstructions, 'Dedicated 4GROW instructions must remain present.');
+for (const token of ['ranking_*', 'Ranking Szkoleń', 'untrusted', 'explicit user confirmation']) {
+  assert(firstChunk.includes(token), `The first 512 characters must preserve Ranking guidance: ${token}.`);
+}
 assert(firstChunk.length <= 512, 'OpenAI requires the first 512 instruction characters to be self-contained.');
 for (const token of [
   'npxtraining',
@@ -28,7 +33,7 @@ for (const token of [
   'preview_content_update',
   'commit_content_update',
 ]) {
-  assert(firstChunk.includes(token), `The first 512 characters must mention "${token}".`);
+  assert(fourGrowInstructions.includes(token), `The 4GROW instructions must mention "${token}".`);
 }
 
 for (const token of [
