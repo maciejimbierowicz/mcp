@@ -608,3 +608,15 @@ new READ/preview/confirmation; never auto-retry or invent product revision IDs.
 Deploy the API module with the scoped `npx_main` and `npx_training` hook guards.
 Ordinary form saves keep existing behavior. The existing product search-cache
 queue remains enabled; search visibility follows normal queue processing delay.
+
+### Opinion trainer correction
+
+Deploy with Drupal `npx_content_api_update_10026` and rebuild Drupal caches.
+Existing CREATE and UPDATE tools now accept `field_trainer: {"target_id": 2}`
+for the verified trainer node; `field_trener` is historical and no longer
+writable. Never copy or map its mixed IDs automatically. CREATE returns the
+trainer name in `content.field_trainer.label`; verify it before confirmation.
+After saving, use get_content with fields/expand `["field_trainer"]` to verify
+the trainer node identity. This returns identity only, not trainer content.
+Discard pre-deployment previews and request a new preview and confirmation.
+This release does not change opinion aliases or publish opinions.
