@@ -35,6 +35,7 @@ const base = {
 };
 const opinion = {
   ...base, ...fields, content_type: 'opinia',
+  field_trener: fields.field_trainer,
   field_trainer: { ...fields.field_trainer, label: 'Test trainer' },
   body: { ...fields.body, summary: null, format: 'full_html' },
   field_zajawka: { value: fields.field_zajawka, format: 'full_html' },
@@ -132,6 +133,10 @@ fail = new Error('create_conflict');
 const before = calls.length;
 assert.equal((await commit.handler({ preview_token: token, confirmed: true })).isError, true);
 assert.equal(calls.length, before + 1, 'Conflicts must not be retried');
+
+const { field_trainer: trainerChoice, ...otherFields } = fields;
+assert.equal(preview.options.inputSchema.safeParse({ content_type: 'opinia', fields: { ...otherFields, field_trener: trainerChoice } }).success, true);
+assert.equal(preview.options.inputSchema.safeParse({ content_type: 'opinia', fields: otherFields }).success, false);
 
 // Exercise SDK registration and schema serialization, not only direct handlers.
 const server = new McpServer({ name: 'create-test', version: '1.0.0' });

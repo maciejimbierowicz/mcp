@@ -358,6 +358,7 @@ const opinionWriteShape = {
   field_name: z.string().nullable().optional(),
   field_surname: z.string().nullable().optional(),
   field_kat_szkolenie: entityReferenceSchema.optional(),
+  field_trener: entityReferenceSchema.optional(),
   field_trainer: entityReferenceSchema.optional(),
   field_ocena_wartosci_opinii: entityReferenceSchema.optional(),
   field_image: imageReferenceSchema.nullable().optional(),
