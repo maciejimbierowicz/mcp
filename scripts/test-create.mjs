@@ -27,7 +27,7 @@ const fields = {
   field_kat_szkolenie: reference,
   field_kategoria: [reference],
   field_tagi: [reference],
-  field_trener: reference,
+  field_trainer: reference,
 };
 const base = {
   title: fields.title, status: false, langcode: 'pl', uid: 123,
@@ -35,6 +35,7 @@ const base = {
 };
 const opinion = {
   ...base, ...fields, content_type: 'opinia',
+  field_trainer: { ...fields.field_trainer, label: 'Test trainer' },
   body: { ...fields.body, summary: null, format: 'full_html' },
   field_zajawka: { value: fields.field_zajawka, format: 'full_html' },
   field_ocena_wartosci_opinii: reference,
@@ -101,11 +102,12 @@ for (const input of [
   ...['status', 'uid', 'field_bonus_email', 'field_image', 'field_wol_content'].map((field) => ({
     content_type: 'opinia', fields: { ...fields, [field]: true },
   })),
-  ...['body', 'field_zajawka', 'field_trener', 'field_kategoria', 'field_tagi'].map((field) => ({
+  ...['body', 'field_zajawka', 'field_trainer', 'field_kategoria', 'field_tagi'].map((field) => ({
     content_type: 'opinia', fields: { ...fields, [field]: null },
   })),
   { content_type: 'opinia', fields: { ...fields, field_tagi: [] } },
-  { content_type: 'opinia', fields: { ...fields, field_trener: { target_id: -1 } } },
+  { content_type: 'opinia', fields: { ...fields, field_trener: { target_id: 4948 } } },
+  { content_type: 'opinia', fields: { ...fields, field_trainer: { target_id: -1 } } },
   { content_type: 'opinia', fields: { ...fields, body: { value: 'Text', format: 'full_html' } } },
   { content_type: 'opinia', fields: { ...fields, field_promotions: 'true' } },
   { content_type: 'opinia', fields: { ...fields, field_additional_info: ['inferred'] } },

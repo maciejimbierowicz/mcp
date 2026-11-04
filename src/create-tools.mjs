@@ -70,7 +70,7 @@ const opinionFields = z.object({
   field_kat_szkolenie: reference,
   field_kategoria: z.array(reference).min(1),
   field_tagi: z.array(reference).min(1),
-  field_trener: reference,
+  field_trainer: reference,
   field_ocena_wartosci_opinii: reference.optional(),
   field_name: z.string().nullable().optional(),
   field_surname: z.string().nullable().optional(),
@@ -95,7 +95,7 @@ const content = z.discriminatedUnion('content_type', [
     field_kat_szkolenie: reference,
     field_kategoria: z.array(reference),
     field_tagi: z.array(reference),
-    field_trener: reference,
+    field_trainer: reference.extend({ label: z.string() }),
     field_ocena_wartosci_opinii: reference,
     field_name: z.string().nullable(),
     field_surname: z.string().nullable(),
@@ -169,7 +169,7 @@ const resultMessage = (value) => ({
 export function registerCreateTools(server, client, onPreviewError, onCommitError) {
   server.registerTool('preview_content_create', {
     title: 'Preview new unpublished Wall of Love or opinion',
-    description: 'Create wall_of_love or opinia without an empty placeholder node. Wall of Love accepts title and optional field_wol_content with new par_text (safe HTML) and wol_opinion paragraphs referencing real existing opinion NIDs. Opinion requires title, body (value/summary), field_zajawka (HTML string), training/category/tag/trainer references resolved from real Drupal data; use get_content_type_schema. Optional author, rating, social links, survey and metatag fields follow the schema. Never infer consent: field_promotions and field_additional_info require an explicit user request. Opinion field_image accepts an existing permanent file target_id or an upload_token from create_content_upload with content_type=opinia. Include alt and optional title. Wait for get_content_upload_status=uploaded before preview. Uploads stay temporary until confirmed CREATE; show the returned image URL and metadata with all fields. Wall of Love uploads, source email, existing Paragraph IDs and publication during CREATE are unavailable. The preview saves no content. Show the entire returned content and every before/after value, including HTML, text format, consent, unpublished status and alias, then request explicit confirmation before commit_content_create. The 10-minute preview token is bound to the technical Drupal user. Do not use UPDATE commit for this token.',
+    description: 'Create wall_of_love or opinia without an empty placeholder node. Wall of Love accepts title and optional field_wol_content with new par_text (safe HTML) and wol_opinion paragraphs referencing real existing opinion NIDs. Opinion requires title, body (value/summary), field_zajawka (HTML string), training/category/tag references resolved from real Drupal data; field_trainer must reference a real npxtrainer node, while field_kat_szkolenie references a szkolenia taxonomy term, not a training node. Historical field_trener is read-only and must not be copied or interpreted as a trainer node. Use get_content_type_schema. Optional author, rating, social links, survey and metatag fields follow the schema. Never infer consent: field_promotions and field_additional_info require an explicit user request. Opinion field_image accepts an existing permanent file target_id or an upload_token from create_content_upload with content_type=opinia. Include alt and optional title. Wait for get_content_upload_status=uploaded before preview. Uploads stay temporary until confirmed CREATE; show the returned image URL and metadata with all fields. Wall of Love uploads, source email, existing Paragraph IDs and publication during CREATE are unavailable. The preview saves no content. Show the entire returned content and every before/after value, including HTML, text format, consent, unpublished status and alias, then request explicit confirmation before commit_content_create. The 10-minute preview token is bound to the technical Drupal user. Do not use UPDATE commit for this token.',
     inputSchema: previewInput,
     outputSchema: previewOutput,
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
