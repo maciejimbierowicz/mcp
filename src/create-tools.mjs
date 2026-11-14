@@ -1,4 +1,5 @@
 import * as z from 'zod/v4';
+import { trainingDateFields, trainingDatePreview, trainingDateCommit } from './training-date-create.mjs';
 
 const id = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const token = z.string().regex(/^[a-f0-9]{64}$/);
@@ -117,17 +118,7 @@ const wallOfLoveFields = z.object({
     textParagraph, opinionParagraph,
   ])).max(50).optional(),
 }).strict();
-const previewInput = z.object({
-  content_type: contentType,
-  fields: z.union([wallOfLoveFields, opinionFields]),
-}).strict().superRefine((input, ctx) => {
-  const schema = input.content_type === 'opinia' ? opinionFields : wallOfLoveFields;
-  const parsed = schema.safeParse(input.fields);
-  if (!parsed.success) {
-    for (const issue of parsed.error.issues) ctx.addIssue({ ...issue, path: ['fields', ...issue.path] });
-  }
-});
-const previewOutput = z.object({
+const existingPreviewOutput = z.object({
   operation: z.literal('single_content_create'),
   content_type: contentType,
   nid: z.null(),
@@ -138,8 +129,30 @@ const previewOutput = z.object({
   preview_token: token,
   expires_at: z.string(),
 });
+const previewInput = z.object({
+  content_type: z.enum(['wall_of_love', 'opinia', 'npxtraining_date']),
+  fields: z.union([wallOfLoveFields, opinionFields, trainingDateFields]),
+}).strict().superRefine((input, ctx) => {
+  const schema = input.content_type === 'npxtraining_date' ? trainingDateFields : input.content_type === 'opinia' ? opinionFields : wallOfLoveFields;
+  const parsed = schema.safeParse(input.fields);
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) ctx.addIssue({ ...issue, path: ['fields', ...issue.path] });
+  }
+});
+const previewOutput = z.object({
+  operation: z.enum(['single_content_create', 'training_date_create_preview']),
+  content_type: z.enum(['wall_of_love', 'opinia', 'npxtraining_date']),
+  nid: z.null(), current_revision_id: z.null(),
+  content: z.record(z.string(), z.unknown()),
+  changes: existingPreviewOutput.shape.changes,
+  requires_confirmation: z.literal(true), preview_token: token, expires_at: z.string(),
+  training: trainingDatePreview.shape.training.optional(),
+  references: trainingDatePreview.shape.references.optional(),
+  related_changes: trainingDatePreview.shape.related_changes.optional(),
+  duplicate_check: z.literal('passed').optional(), execution_available: z.literal(true).optional(),
+});
 const commitInput = z.object({ preview_token: token, confirmed: z.literal(true) }).strict();
-const commitResult = z.object({
+const existingCommitResult = z.object({
   operation: z.literal('single_content_create'),
   content_type: contentType,
   nid: id,
@@ -150,6 +163,7 @@ const commitResult = z.object({
   url: z.string().url(),
   content,
 });
+const commitResult = z.union([existingCommitResult, trainingDateCommit]);
 const commitOutput = z.object({
   status: z.enum(['committed', 'blocked']),
   result: commitResult.nullable(),
@@ -169,7 +183,7 @@ const resultMessage = (value) => ({
 export function registerCreateTools(server, client, onPreviewError, onCommitError) {
   server.registerTool('preview_content_create', {
     title: 'Preview new unpublished Wall of Love or opinion',
-    description: 'Create wall_of_love or opinia without an empty placeholder node. Wall of Love accepts title and optional field_wol_content with new par_text (safe HTML) and wol_opinion paragraphs referencing real existing opinion NIDs. Opinion requires title, body (value/summary), field_zajawka (HTML string), training/category/tag references resolved from real Drupal data; field_trainer must reference a real npxtrainer node, while field_kat_szkolenie references a szkolenia taxonomy term, not a training node. Historical field_trener is read-only and must not be copied or interpreted as a trainer node. Use get_content_type_schema. Optional author, rating, social links, survey and metatag fields follow the schema. Never infer consent: field_promotions and field_additional_info require an explicit user request. Opinion field_image accepts an existing permanent file target_id or an upload_token from create_content_upload with content_type=opinia. Include alt and optional title. Wait for get_content_upload_status=uploaded before preview. Uploads stay temporary until confirmed CREATE; show the returned image URL and metadata with all fields. Wall of Love uploads, source email, existing Paragraph IDs and publication during CREATE are unavailable. The preview saves no content. Show the entire returned content and every before/after value, including HTML, text format, consent, unpublished status and alias, then request explicit confirmation before commit_content_create. The 10-minute preview token is bound to the technical Drupal user. Do not use UPDATE commit for this token.',
+    description: 'For npxtraining_date provide training_id, title, start/end dates, form, trainer and calendar title. Optional fields include plain text descriptions, costs, hours, calendar visibility, Zoom URL/message, free minutes and existing discount references. Drupal validates defaults, references and duplicates. Show all content, references and related_changes and wait for explicit confirmation. Commit creates the date and links the training atomically, preserving existing links. Create wall_of_love or opinia without an empty placeholder node. Wall of Love accepts title and optional field_wol_content with new par_text (safe HTML) and wol_opinion paragraphs referencing real existing opinion NIDs. Opinion requires title, body (value/summary), field_zajawka (HTML string), training/category/tag references resolved from real Drupal data; field_trainer must reference a real npxtrainer node, while field_kat_szkolenie references a szkolenia taxonomy term, not a training node. Historical field_trener is read-only and must not be copied or interpreted as a trainer node. Use get_content_type_schema. Optional author, rating, social links, survey and metatag fields follow the schema. Never infer consent: field_promotions and field_additional_info require an explicit user request. Opinion field_image accepts an existing permanent file target_id or an upload_token from create_content_upload with content_type=opinia. Include alt and optional title. Wait for get_content_upload_status=uploaded before preview. Uploads stay temporary until confirmed CREATE; show the returned image URL and metadata with all fields. Wall of Love uploads, source email, existing Paragraph IDs and publication during CREATE are unavailable. The preview saves no content. Show the entire returned content and every before/after value, including HTML, text format, consent, unpublished status and alias, then request explicit confirmation before commit_content_create. The 10-minute preview token is bound to the technical Drupal user. Do not use UPDATE commit for this token.',
     inputSchema: previewInput,
     outputSchema: previewOutput,
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
@@ -177,7 +191,7 @@ export function registerCreateTools(server, client, onPreviewError, onCommitErro
     try {
       const values = previewInput.parse(input);
       const result = await client.post('/api/v1/content/create/preview', values);
-      previewOutput.parse(result);
+      (values.content_type === 'npxtraining_date' ? trainingDatePreview : existingPreviewOutput).parse(result);
       return resultMessage(result);
     }
     catch (error) {
@@ -187,7 +201,7 @@ export function registerCreateTools(server, client, onPreviewError, onCommitErro
 
   server.registerTool('commit_content_create', {
     title: 'Create confirmed unpublished Wall of Love or opinion',
-    description: 'Creates exactly the complete Wall of Love or opinion plan returned by preview_content_create, only after the user explicitly confirms that displayed plan. Accept only its token and confirmed=true; never add content values here. Drupal revalidates permissions, token owner/expiry, fields, references and alias, then atomically saves one unpublished node, any new Paragraphs, alias, initial revision and audit. Publication of a saved opinion uses a separate UPDATE preview and explicit confirmation. A token is single-use. Return the real NID, URL, revision and audit IDs. If the alias is taken, request a new preview and confirmation; never silently change the title or URL. On a timeout the outcome is unknown: inspect READ/audit before another creation. Never automatically retry or create another preview after a blocked commit.',
+    description: 'Creates exactly the complete Wall of Love, opinion or training date plan returned by preview_content_create, only after the user explicitly confirms that displayed plan. For training dates the commit creates the date and links its training atomically, returning both audit IDs. Accept only its token and confirmed=true; never add content values here. Drupal revalidates permissions, token owner/expiry, fields, references and alias, then atomically saves one unpublished node, any new Paragraphs, alias, initial revision and audit. Publication of a saved opinion uses a separate UPDATE preview and explicit confirmation. A token is single-use. Return the real NID, URL, revision and audit IDs. If the alias is taken, request a new preview and confirmation; never silently change the title or URL. On a timeout the outcome is unknown: inspect READ/audit before another creation. Never automatically retry or create another preview after a blocked commit.',
     inputSchema: commitInput,
     outputSchema: commitOutput,
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },

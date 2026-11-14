@@ -158,7 +158,7 @@ try {
   assert.equal(uploaded.structuredContent.path, '/api/v1/content/create/uploads');
   const schema = listed.tools.find((tool) => tool.name === 'preview_content_create').inputSchema;
   assert.equal(schema.type, 'object');
-  assert.deepEqual(schema.properties.content_type.enum, ['wall_of_love', 'opinia']);
+  assert.deepEqual(schema.properties.content_type.enum, ['wall_of_love', 'opinia', 'npxtraining_date']);
   fail = null;
   response = {
     operation: 'single_content_create', content_type: 'opinia',
