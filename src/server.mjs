@@ -1,3 +1,4 @@
+import { certificateResult, previewUpdate, commitUpdate } from './certificate-write.mjs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -781,30 +782,34 @@ function createServer(audit = null) {
       {
         title: 'Preview content update',
         description:
-          'Creates a non-persistent preview for an allowed training, landing page, quiz, opinion or Wall of Love update. Drupal accepts only fields on that type’s WRITE allowlist. Preserve every existing Wall of Love Paragraph; removal is unavailable. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
+          'For certificates use operation=generate_certificates and submission_id only; this previews the entire submission and requires separate explicit confirmation. For content updates, creates a non-persistent preview for an allowed training, landing page, quiz, opinion or Wall of Love update. Drupal accepts only fields on that type’s WRITE allowlist. Preserve every existing Wall of Love Paragraph; removal is unavailable. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
-          nid: z.number().int().positive(),
-          expected_revision_id: z.number().int().positive(),
-          updates: contentUpdatesSchema,
+          operation: z.enum(['content_update', 'generate_certificates']).optional(),
+          submission_id: z.number().int().positive().max(2147483647).optional(),
+          nid: z.number().int().positive().optional(),
+          expected_revision_id: z.number().int().positive().optional(),
+          updates: contentUpdatesSchema.optional(),
         },
         outputSchema: {
-          nid: z.number().int(),
-          content_type: writableContentTypeSchema,
-          current_revision_id: z.number().int(),
+          nid: z.number().int().optional(),
+          content_type: writableContentTypeSchema.optional(),
+          current_revision_id: z.number().int().optional(),
           changes: z.array(z.record(z.string(), z.any())),
-          unchanged: z.array(z.string()),
+          unchanged: z.array(z.string()).optional(),
           preview_token: z.string(),
           expires_at: z.string(),
+          operation: z.literal('generate_certificates').optional(),
+          submission_id: z.number().int().positive().optional(),
+          details: z.record(z.string(), z.any()).optional(),
+          action: z.enum(['generate', 'already_generated']).optional(),
+          requires_confirmation: z.literal(true).optional(),
+          side_effects: z.array(z.string()).optional(),
         },
         annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       },
       async (input) => {
         try {
-          const result = await drupalWriteClient.post(`/api/v1/content/${input.nid}/preview`, {
-            nid: input.nid,
-            expected_revision_id: input.expected_revision_id,
-            updates: input.updates,
-          });
+          const result = await previewUpdate(drupalWriteClient, input, contentUpdatesSchema);
           return { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] };
         }
         catch (error) {
@@ -908,20 +913,21 @@ function createServer(audit = null) {
       {
         title: 'Commit confirmed content update',
         description:
-          'Commits exactly the changes from a content preview token. Call only after the user explicitly confirms the displayed preview. Never accept or invent update values here.',
+          'Use operation=generate_certificates only for a certificate preview token. Reports verified PDF references or already-generated status; errors require review, never automatic regeneration. Commits exactly the changes from a content preview token. Call only after the user explicitly confirms the displayed preview. Never accept or invent update values here.',
         inputSchema: {
+          operation: z.enum(['content_update', 'generate_certificates']).optional(),
           preview_token: z.string().regex(/^[a-f0-9]{64}$/),
           confirmed: z.literal(true),
         },
         outputSchema: {
           status: z.enum(['committed', 'blocked']),
-          result: z.object({
+          result: z.union([certificateResult, z.object({
             nid: z.number().int(),
             revision_id: z.number().int(),
             audit_id: z.number().int(),
             updated_fields: z.array(z.string()),
             fields: z.record(z.string(), z.any()),
-          }).nullable(),
+          })]).nullable(),
           error: z.object({
             code: z.literal('rate_limited'),
             message: z.string(),
@@ -930,12 +936,9 @@ function createServer(audit = null) {
         },
         annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
       },
-      async ({ preview_token: previewToken, confirmed }) => {
+      async (input) => {
         try {
-          const result = await drupalWriteClient.post('/api/v1/content/commit', {
-            preview_token: previewToken,
-            confirmed,
-          });
+          const result = await commitUpdate(drupalWriteClient, input);
           const output = { status: 'committed', result, error: null };
           return {
             structuredContent: output,
