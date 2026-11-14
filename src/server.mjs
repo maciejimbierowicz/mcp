@@ -1,4 +1,4 @@
-import { certificateResult, previewUpdate, commitUpdate } from './certificate-write.mjs';
+import { notificationResult, certificateResult, previewUpdate, commitUpdate } from './certificate-write.mjs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -782,9 +782,9 @@ function createServer(audit = null) {
       {
         title: 'Preview content update',
         description:
-          'For certificates use operation=generate_certificates and submission_id only; this previews the entire submission and requires separate explicit confirmation. For content updates, creates a non-persistent preview for an allowed training, landing page, quiz, opinion or Wall of Love update. Drupal accepts only fields on that type’s WRITE allowlist. Preserve every existing Wall of Love Paragraph; removal is unavailable. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
+          'For notifications use operation=enable_notifications and submission_id only; show the checkbox change, whole-submission scope, schedule and side effects, then wait for explicit confirmation. Already enabled is a no-op. For certificates use operation=generate_certificates and submission_id only; this previews the entire submission and requires separate explicit confirmation. For content updates, creates a non-persistent preview for an allowed training, landing page, quiz, opinion or Wall of Love update. Drupal accepts only fields on that type’s WRITE allowlist. Preserve every existing Wall of Love Paragraph; removal is unavailable. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
-          operation: z.enum(['content_update', 'generate_certificates']).optional(),
+          operation: z.enum(['content_update', 'generate_certificates', 'enable_notifications']).optional(),
           submission_id: z.number().int().positive().max(2147483647).optional(),
           nid: z.number().int().positive().optional(),
           expected_revision_id: z.number().int().positive().optional(),
@@ -798,10 +798,10 @@ function createServer(audit = null) {
           unchanged: z.array(z.string()).optional(),
           preview_token: z.string(),
           expires_at: z.string(),
-          operation: z.literal('generate_certificates').optional(),
+          operation: z.enum(['generate_certificates','enable_notifications']).optional(),
           submission_id: z.number().int().positive().optional(),
           details: z.record(z.string(), z.any()).optional(),
-          action: z.enum(['generate', 'already_generated']).optional(),
+          action: z.enum(['generate', 'already_generated','enable','already_enabled']).optional(),
           requires_confirmation: z.literal(true).optional(),
           side_effects: z.array(z.string()).optional(),
         },
@@ -913,15 +913,15 @@ function createServer(audit = null) {
       {
         title: 'Commit confirmed content update',
         description:
-          'Use operation=generate_certificates only for a certificate preview token. Reports verified PDF references or already-generated status; errors require review, never automatic regeneration. Commits exactly the changes from a content preview token. Call only after the user explicitly confirms the displayed preview. Never accept or invent update values here.',
+          'Use operation=enable_notifications for a notification preview token or operation=generate_certificates for a certificate token. Never mix operation tokens. Notification success confirms the switch and stored schedule, not email delivery. Never auto-retry a failed or timed-out notification operation. Reports verified PDF references or already-generated status; errors require review, never automatic regeneration. Commits exactly the changes from a content preview token. Call only after the user explicitly confirms the displayed preview. Never accept or invent update values here.',
         inputSchema: {
-          operation: z.enum(['content_update', 'generate_certificates']).optional(),
+          operation: z.enum(['content_update', 'generate_certificates', 'enable_notifications']).optional(),
           preview_token: z.string().regex(/^[a-f0-9]{64}$/),
           confirmed: z.literal(true),
         },
         outputSchema: {
           status: z.enum(['committed', 'blocked']),
-          result: z.union([certificateResult, z.object({
+          result: z.union([notificationResult, certificateResult, z.object({
             nid: z.number().int(),
             revision_id: z.number().int(),
             audit_id: z.number().int(),
