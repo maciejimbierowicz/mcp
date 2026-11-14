@@ -16,6 +16,17 @@ export const trainingDateFields = z.object({
   field_npxtraining_date_guarant: z.boolean().optional(), field_npxtraining_date_lim_dis: z.boolean().optional(),
   field_npxtraining_min_guaranted: text.optional(),
   field_npxtraining_hours: z.number().int().nonnegative().optional(),
+  body: z.string().max(20000).describe('Plain text description; line breaks allowed, HTML not accepted.').optional(),
+  field_addcost_info: z.string().max(20000).optional(),
+  field_npxtraining_date_hours: text.optional(),
+  field_npx_calendar_hide: z.boolean().optional(),
+  field_zoom_link: text.describe('HTTP(S) meeting URL without credentials.').optional(),
+  field_zoom_message: z.string().max(20000).describe('Plain text with links and line breaks; HTML not accepted.').optional(),
+  field_npxtraining_date_dis_fxd: text.describe('Non-negative amount, at most two decimal places.').optional(),
+  field_npxtraining_date_dis_per: z.number().int().min(0).max(100).optional(),
+  field_npxtraining_date_dis_ref: refs.optional(),
+  field_npxtraining_date_ldis_ref: refs.optional(),
+  field_npxtraining_date_min: z.number().int().nonnegative().max(2147483647).optional(),
 }).strict();
 export const trainingDatePreview = z.object({
   operation: z.literal('training_date_create_preview'), content_type: z.literal('npxtraining_date'),

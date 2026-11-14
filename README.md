@@ -579,3 +579,20 @@ new READ/preview/confirmation; never auto-retry or invent product revision IDs.
 Deploy the API module with the scoped `npx_main` and `npx_training` hook guards.
 Ordinary form saves keep existing behavior. The existing product search-cache
 queue remains enabled; search visibility follows normal queue processing delay.
+
+### GROW-1110: additional training date fields
+
+Training date CREATE also accepts `body`, `field_addcost_info`,
+`field_npxtraining_date_hours`, `field_npx_calendar_hide`, `field_zoom_link`,
+`field_zoom_message`, `field_npxtraining_date_min`,
+`field_npxtraining_date_dis_fxd`, `field_npxtraining_date_dis_per`,
+`field_npxtraining_date_dis_ref` and `field_npxtraining_date_ldis_ref`.
+Descriptions accept plain text with line breaks (up to 20000 characters);
+formatted Drupal fields explicitly use `plain_text`. Zoom URLs require HTTP(S)
+without credentials. Percentage discounts are integers from 0 to 100; fixed
+discounts are non-negative amounts with at most two decimal places. Discount
+references must identify existing, accessible entities of the allowed bundle.
+The technical WRITE role needs `view any npxdiscount entities` and
+`view any npxlinkdiscount entities` to select those references.
+All values and references are included in the confirmed preview and rechecked
+at commit. Historical minimum prices remain outside this CREATE allowlist.
