@@ -11,6 +11,11 @@ function assert(condition, message) {
 }
 
 const firstChunk = SERVER_INSTRUCTIONS.slice(0, 512);
+const fourGrowInstructions = SERVER_INSTRUCTIONS.split('\n\n').find((paragraph) => paragraph.startsWith('For 4GROW,'));
+assert(fourGrowInstructions, 'Dedicated 4GROW instructions must remain present.');
+for (const token of ['ranking_*', 'Ranking Szkoleń', 'untrusted', 'explicit user confirmation']) {
+  assert(firstChunk.includes(token), `The first 512 characters must preserve Ranking guidance: ${token}.`);
+}
 assert(firstChunk.length <= 512, 'OpenAI requires the first 512 instruction characters to be self-contained.');
 for (const token of [
   'npxtraining',
@@ -28,7 +33,7 @@ for (const token of [
   'preview_content_update',
   'commit_content_update',
 ]) {
-  assert(firstChunk.includes(token), `The first 512 characters must mention "${token}".`);
+  assert(fourGrowInstructions.includes(token), `The 4GROW instructions must mention "${token}".`);
 }
 
 for (const token of [
@@ -105,10 +110,10 @@ const opinionWriteStart = serverSource.indexOf('const opinionWriteShape');
 const wallOfLoveWriteStart = serverSource.indexOf('const wallOfLoveWriteShape');
 assert(opinionWriteStart >= 0 && wallOfLoveWriteStart > opinionWriteStart, 'Opinion and Wall of Love WRITE schemas must exist.');
 const opinionWriteSource = serverSource.slice(opinionWriteStart, wallOfLoveWriteStart);
-for (const field of ['status', 'field_name', 'field_surname', 'field_kat_szkolenie', 'field_trener', 'field_ocena_wartosci_opinii', 'field_image', 'field_additional_info', 'field_promotions', 'field_linkedin_link', 'field_goldenline_link', 'field_survey']) {
+for (const field of ['status', 'field_name', 'field_surname', 'field_kat_szkolenie', 'field_trainer', 'field_ocena_wartosci_opinii', 'field_image', 'field_additional_info', 'field_promotions', 'field_linkedin_link', 'field_goldenline_link', 'field_survey']) {
   assert(opinionWriteSource.includes(field), 'Opinion WRITE schema must include "' + field + '".');
 }
-for (const field of ['field_bonus_email']) {
+for (const field of ['field_bonus_email', 'field_trener']) {
   assert(!opinionWriteSource.includes(field), 'Unsupported Opinion field must remain outside WRITE: ' + field);
 }
 assert(serverSource.includes('field_wol_content: z.array(paragraphWriteItemSchema)'), 'Wall of Love must use the existing Paragraph WRITE schema.');

@@ -28,6 +28,7 @@
     "test:mcp-limits": "node scripts/test-mcp-limits.mjs",
     "test:hardening": "node --env-file=.env scripts/test-hardening.mjs",
     "test:write": "node --env-file=.env scripts/test-write.mjs",
+    "test:create": "node scripts/test-create.mjs",
     "test:term-availability": "node scripts/test-term-availability.mjs"
   },
   "dependencies": {

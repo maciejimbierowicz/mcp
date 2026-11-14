@@ -166,7 +166,7 @@ WRITE is disabled by default. To enable it for testing, set
 `DRUPAL_WRITE_PASSWORD` for a separate minimal Drupal account. Never reuse the
 READ account or grant the WRITE account administrative permissions.
 
-New content can be created only for `wall_of_love`, using
+New content can be created for `wall_of_love` and `opinia`, using
 `preview_content_create` followed by explicit user confirmation and
 `commit_content_create`. The WRITE account additionally needs the dedicated
 Drupal permission `create npx content api`; this change grants it to nobody.
@@ -181,6 +181,38 @@ other types, uploads and publication flags are rejected. The full preview
 includes defaults, HTML format, unpublished status and the generated alias.
 Show it in full before confirmation. The token is user-bound and expires after
 10 minutes; it cannot be used by an UPDATE commit.
+
+For `content_type: "opinia"`, the same CREATE tools accept `title`, `body`
+(`value` and optional `summary`), `field_zajawka` (HTML string), and required
+training/category/tag/trainer references from real Drupal results. Inspect
+`get_content_type_schema` for active field definitions. Optional author,
+rating, social links, survey, consent and metatag fields follow the tool
+schema and Drupal WRITE allowlist. Supply `field_promotions` and
+`field_additional_info` only on an explicit user request; omitted fields use
+Drupal defaults shown in preview. Body and teaser use the server-selected
+`full_html` format and safe HTML validation. Opinion aliases use
+`/opinie/[node:title]`. Source email and publication flags are rejected during CREATE. A saved opinion can be
+published through the existing UPDATE tools after a separate confirmation.
+No additional MCP tools are registered. Rebuild Drupal caches and restart
+the adapter after deploying both changes; review existing holders of
+`create npx content api`, which now covers both supported types.
+
+The existing `create_content_upload` tool supports new opinion images through
+`{ content_type: "opinia", destination: { scope: "content", field: "field_image" } }`,
+without `nid` or `expected_revision_id`. Give the user its browser upload URL,
+wait for `get_content_upload_status` to report `uploaded`, then pass
+`field_image: { upload_token, alt, title? }` to `preview_content_create`.
+Alternatively use an existing permanent `target_id` with the same metadata.
+Show the image URL, filename, MIME, dimensions and descriptions returned in the
+complete CREATE preview. Only confirmed CREATE makes a staged image permanent
+and attaches it to the new unpublished node. Tokens cannot cross CREATE/UPDATE
+or be reused, and expire in 10 minutes. Existing upload inputs for UPDATE retain
+`nid`, `expected_revision_id` and their content/Paragraph destination. CREATE
+uploads need CREATE permission alone. No additional MCP tools are registered.
+The Drupal route for new-image staging is `/api/v1/content/create/uploads`.
+Do not infer consent or publication from attaching an image.
+
+Run `npm run test:create` for the local contract and SDK schema tests.
 
 Commit accepts only `{ preview_token, confirmed: true }` and returns
 `{ status: "committed", result, error: null }` with the real NID, URL, alias,
@@ -596,3 +628,15 @@ The technical WRITE role needs `view any npxdiscount entities` and
 `view any npxlinkdiscount entities` to select those references.
 All values and references are included in the confirmed preview and rechecked
 at commit. Historical minimum prices remain outside this CREATE allowlist.
+
+### Opinion trainer correction
+
+Deploy with Drupal `npx_content_api_update_10026` and rebuild Drupal caches.
+Existing CREATE and UPDATE tools now accept `field_trainer: {"target_id": 2}`
+for the verified trainer node; `field_trener` is historical and no longer
+writable. Never copy or map its mixed IDs automatically. CREATE returns the
+trainer name in `content.field_trainer.label`; verify it before confirmation.
+After saving, use get_content with fields/expand `["field_trainer"]` to verify
+the trainer node identity. This returns identity only, not trainer content.
+Discard pre-deployment previews and request a new preview and confirmation.
+This release does not change opinion aliases or publish opinions.
