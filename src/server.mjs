@@ -1,4 +1,4 @@
-import { notificationResult, certificateResult, previewUpdate, commitUpdate } from './certificate-write.mjs';
+import { checkboxResetResult, notificationResult, certificateResult, previewUpdate, commitUpdate } from './certificate-write.mjs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -765,9 +765,9 @@ function createServer(audit = null) {
       {
         title: 'Preview content update',
         description:
-          'For notifications use operation=enable_notifications and submission_id only; show the checkbox change, whole-submission scope, schedule and side effects, then wait for explicit confirmation. Already enabled is a no-op. For certificates use operation=generate_certificates and submission_id only; this previews the entire submission and requires separate explicit confirmation. For content updates, creates a non-persistent preview for an allowed training, landing page, quiz, opinion or Wall of Love update. Drupal accepts only fields on that type’s WRITE allowlist. Preserve every existing Wall of Love Paragraph; removal is unavailable. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
+          'To clear a checkbox use operation=disable_notifications or operation=unset_certificates with submission_id only. Unsetting certificates preserves existing PDFs. Disabling notifications deletes the Drupal notification records including stored sent flags; it does not recall sent mail. Both actions regenerate the submission form PDF and preserve participant certificates. Show all before/after values and side effects and obtain explicit confirmation. For notifications use operation=enable_notifications and submission_id only; show the checkbox change, whole-submission scope, schedule and side effects, then wait for explicit confirmation. Already enabled is a no-op. For certificates use operation=generate_certificates and submission_id only; this previews the entire submission and requires separate explicit confirmation. For content updates, creates a non-persistent preview for an allowed training, landing page, quiz, opinion or Wall of Love update. Drupal accepts only fields on that type’s WRITE allowlist. Preserve every existing Wall of Love Paragraph; removal is unavailable. Always reproduce every returned before/after value completely and exactly, without summaries or truncation, and ask for explicit confirmation before calling commit_content_update.',
         inputSchema: {
-          operation: z.enum(['content_update', 'generate_certificates', 'enable_notifications']).optional(),
+          operation: z.enum(['content_update', 'generate_certificates', 'enable_notifications', 'disable_notifications', 'unset_certificates']).optional(),
           submission_id: z.number().int().positive().max(2147483647).optional(),
           nid: z.number().int().positive().optional(),
           expected_revision_id: z.number().int().positive().optional(),
@@ -781,10 +781,10 @@ function createServer(audit = null) {
           unchanged: z.array(z.string()).optional(),
           preview_token: z.string(),
           expires_at: z.string(),
-          operation: z.enum(['generate_certificates','enable_notifications']).optional(),
+          operation: z.enum(['generate_certificates','enable_notifications','disable_notifications','unset_certificates']).optional(),
           submission_id: z.number().int().positive().optional(),
           details: z.record(z.string(), z.any()).optional(),
-          action: z.enum(['generate', 'already_generated','enable','already_enabled']).optional(),
+          action: z.enum(['generate', 'already_generated','enable','already_enabled','disable','already_disabled']).optional(),
           requires_confirmation: z.literal(true).optional(),
           side_effects: z.array(z.string()).optional(),
         },
@@ -896,15 +896,15 @@ function createServer(audit = null) {
       {
         title: 'Commit confirmed content update',
         description:
-          'Use operation=enable_notifications for a notification preview token or operation=generate_certificates for a certificate token. Never mix operation tokens. Notification success confirms the switch and stored schedule, not email delivery. Never auto-retry a failed or timed-out notification operation. Reports verified PDF references or already-generated status; errors require review, never automatic regeneration. Commits exactly the changes from a content preview token. Call only after the user explicitly confirms the displayed preview. Never accept or invent update values here.',
+          'For a checkbox reset token use its exact operation=disable_notifications or operation=unset_certificates. Never interchange enable, generate or reset tokens. Use operation=enable_notifications for a notification preview token or operation=generate_certificates for a certificate token. Never mix operation tokens. Notification success confirms the switch and stored schedule, not email delivery. Never auto-retry a failed or timed-out notification operation. Reports verified PDF references or already-generated status; errors require review, never automatic regeneration. Commits exactly the changes from a content preview token. Call only after the user explicitly confirms the displayed preview. Never accept or invent update values here.',
         inputSchema: {
-          operation: z.enum(['content_update', 'generate_certificates', 'enable_notifications']).optional(),
+          operation: z.enum(['content_update', 'generate_certificates', 'enable_notifications', 'disable_notifications', 'unset_certificates']).optional(),
           preview_token: z.string().regex(/^[a-f0-9]{64}$/),
           confirmed: z.literal(true),
         },
         outputSchema: {
           status: z.enum(['committed', 'blocked']),
-          result: z.union([notificationResult, certificateResult, z.object({
+          result: z.union([checkboxResetResult, notificationResult, certificateResult, z.object({
             nid: z.number().int(),
             revision_id: z.number().int(),
             audit_id: z.number().int(),

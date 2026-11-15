@@ -640,3 +640,21 @@ After saving, use get_content with fields/expand `["field_trainer"]` to verify
 the trainer node identity. This returns identity only, not trainer content.
 Discard pre-deployment previews and request a new preview and confirmation.
 This release does not change opinion aliases or publish opinions.
+
+### Explicit registration checkbox clearing
+
+Existing `preview_content_update` / `commit_content_update` tools accept
+`unset_certificates` and `disable_notifications` with a submission ID.
+Preview shows exact checkbox values, existing files, affected notification
+records and save side effects. Commit requires the matching operation, its
+user-bound 10-minute token and explicit confirmation. These actions use the
+existing certificate/notification WRITE permissions plus registration READ.
+Unsetting certificates preserves the PDFs and participant file references.
+Disabling notifications invokes the existing Drupal hook: it deletes stored
+notification records (including sent flags) and cannot recall delivered mail.
+Both preserve participant certificates and regenerate the submission form PDF
+only when a save is needed. Completed retries are no-ops; partial failures block
+retries pending review. Neither reset is an automatic recovery from a failed
+generation or enabling operation. No new tools, permissions or database update
+are required: deploy Drupal code and rebuild caches, then deploy/restart the
+adapter and refresh the connected MCP tools.
